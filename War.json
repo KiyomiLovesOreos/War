@@ -1,0 +1,13 @@
+{
+  "id": "War",
+  "name": "War",
+  "display_name": "War",
+  "author": ["Amolyte"],
+  "description": "My own remaking of balatro MP but like, not slop",
+  "prefix": "war",
+  "version": "0.0.1",
+  "main_file": "War.lua",
+  "badge_colour": "8B0000",
+  "icon_path": "mod_badge.png",
+  "dependencies": ["Steamodded (>=26.1002.0)"]
+}

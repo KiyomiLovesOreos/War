@@ -1,0 +1,95 @@
+[manifest]
+version = "1.0.0"
+dump_lua = false
+priority = 0
+
+# No-op placeholder required by Lovely (manifest alone causes a parse error)
+[[patches]]
+[patches.pattern]
+target       = "boot.lua"
+pattern      = "return true"
+position     = "before"
+match_indent = true
+payload      = ""
+
+# When War deck-selecting, replace the Continue tab with Challenges.
+# The first G.STAGE==MAIN_MENU branch is the Continue tab; wrapping it means
+# when WAR._deck_selecting the expression short-circuits to the `or {Challenges}` branch.
+[[patches]]
+[patches.pattern]
+target       = "functions/UI_definitions.lua"
+pattern      = "G.STAGE == G.STAGES.MAIN_MENU and {"
+position     = "at"
+match_indent = true
+payload      = "(not (WAR and WAR._deck_selecting)) and G.STAGE == G.STAGES.MAIN_MENU and {"
+times        = 1
+
+# The second G.STAGE==MAIN_MENU branch is the original Challenges tab.
+# When deck-selecting, make it nil so the duplicate Challenges tab doesn't appear.
+# (The slot above already shows Challenges via the Continue→Challenges fall-through.)
+[[patches]]
+[patches.pattern]
+target       = "functions/UI_definitions.lua"
+pattern      = "G.STAGE == G.STAGES.MAIN_MENU and {"
+position     = "at"
+match_indent = true
+payload      = "(not (WAR and WAR._deck_selecting)) and G.STAGE == G.STAGES.MAIN_MENU and {"
+times        = 1
+
+# A rival round is played on a real vanilla boss, so the boss must never decide
+# the round: end_round()'s game-over branch is suppressed while one is live.
+[[patches]]
+[patches.pattern]
+target       = "functions/state_events.lua"
+pattern      = "local game_over = true"
+position     = "after"
+match_indent = true
+payload      = "if WAR and WAR.GAME and WAR.GAME.active then game_over = false end"
+times        = 1
+
+# ...and vanilla must never declare the run won on a rival round either.
+[[patches]]
+[patches.pattern]
+target       = "functions/state_events.lua"
+pattern      = "if game_over then"
+position     = "before"
+match_indent = true
+payload      = "if WAR and WAR.GAME and WAR.GAME.pvp_round() then game_won = nil; G.GAME.won = nil end"
+times        = 1
+
+# The blind reward on a rival round is always earned — the race against the
+# opponent decides the round, not the boss's own chip requirement.
+[[patches]]
+[patches.pattern]
+target       = "functions/state_events.lua"
+pattern      = '''if G.GAME.chips - G.GAME.blind.chips >= 0 then
+        add_round_eval_row({dollars = G.GAME.blind.dollars, name='blind1', pitch = pitch})'''
+position     = "at"
+match_indent = true
+payload      = '''if G.GAME.chips - G.GAME.blind.chips >= 0 or (WAR and WAR.GAME and WAR.GAME.pvp_round()) then
+        add_round_eval_row({dollars = G.GAME.blind.dollars, name='blind1', pitch = pitch})'''
+times        = 1
+
+# Extra hand gold is suppressed during a rival round — the round ends on the
+# server's signal, not by beating the chip target, so hands remaining after
+# the race should not award idle-hand money to one player but not the other.
+[[patches]]
+[patches.pattern]
+target       = "functions/state_events.lua"
+pattern      = "if G.GAME.current_round.hands_left > 0 and not G.GAME.modifiers.no_extra_hand_money then"
+position     = "at"
+match_indent = true
+payload      = "if G.GAME.current_round.hands_left > 0 and (not G.GAME.modifiers.no_extra_hand_money) and not (WAR and WAR.GAME and WAR.GAME.pvp_round()) then"
+times        = 1
+
+# Injected before the 'hands' handler so it lands in the same elseif chain.
+[[patches]]
+[patches.pattern]
+target       = "functions/common_events.lua"
+pattern      = "elseif config.name == 'hands' then"
+position     = "before"
+match_indent = true
+payload      = '''elseif config.name == 'war_comeback' then
+                    table.insert(left_text, {n=G.UIT.T, config={text=config.disp or config.dollars, scale=0.8*scale, colour=G.C.PURPLE, shadow=true, juice=true}})
+                    table.insert(left_text, {n=G.UIT.O, config={object=DynaText({string={" "..(WAR and localize("war_comeback_bonus") or "Comeback Bonus")}, colours={G.C.UI.TEXT_LIGHT}, shadow=true, pop_in=0, scale=0.4*scale, silent=true})}})'''
+times        = 1
