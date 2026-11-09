@@ -335,7 +335,7 @@ function WAR.SYNC.on_start_game(m)
         end,
     }))
 
-    print("[WAR SYNC] game started seed=" .. tostring(m.seed))
+    WAR.log("[WAR SYNC] game started seed=" .. tostring(m.seed))
 end
 
 function WAR.SYNC.on_start_blind(m)
@@ -375,7 +375,7 @@ function WAR.SYNC.on_start_blind(m)
 end
 
 function WAR.SYNC.on_enemy_info(m)
-    print(("[WAR NET] enemyInfo score=%s hands=%s%s"):format(
+    WAR.log(("[WAR NET] enemyInfo score=%s hands=%s%s"):format(
         tostring(m.score), tostring(m.handsLeft), m.noScore and " (hidden)" or ""))
     if m.noScore or m.score == nil then
         WAR.GAME.enemy_masked = true

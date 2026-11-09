@@ -1,5 +1,7 @@
 -- core/globals.lua
 
+WAR.log = WAR.log or function() end
+
 WAR.RULESETS = {}
 
 -- Ban lists are plain data on layers, gamemodes and rulesets. A gamemode or

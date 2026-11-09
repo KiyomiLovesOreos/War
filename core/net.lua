@@ -16,9 +16,7 @@ function WAR.NET.connect()
     local socket = require("socket")
     local s = socket.tcp()
     s:settimeout(8)
-    -- Beta env uses port 7778; resolved here (not at load time) so WAR.CONFIG exists.
-    local port = (WAR.CONFIG and WAR.CONFIG.server_env == "beta")
-                 and 7778 or WAR.NET.RELAY_PORT
+    local port = WAR.beta_test == 1 and 7778 or WAR.NET.RELAY_PORT
     local ok, err = s:connect(WAR.NET.RELAY_HOST, port)
     if not ok then s:close(); return false, err end
     s:settimeout(0)
@@ -29,7 +27,7 @@ function WAR.NET.connect()
     WAR.NET.sock = sock
     recv_buf = ""
     WAR.NET._expected_seq = nil
-    print("[WAR NET] connected to relay")
+    WAR.log("[WAR NET] connected to relay")
     return true
 end
 
@@ -75,7 +73,7 @@ function WAR.NET.poll()
     elseif partial and #partial > 0 then
         recv_buf = recv_buf .. partial
     elseif err == "closed" then
-        print("[WAR NET] relay disconnected")
+        WAR.log("[WAR NET] relay disconnected")
         WAR.NET.disconnect()
         WAR.NET.on_relay_disconnected()
         return {}

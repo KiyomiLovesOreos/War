@@ -136,7 +136,7 @@ function WAR.AUTH.handle(msg)
     local a = msg.action
 
     if a == "registered" then
-        print("[WAR AUTH] registered " .. tostring(WAR.AUTH._pending_username))
+        WAR.log("[WAR AUTH] registered " .. tostring(WAR.AUTH._pending_username))
         -- after register, immediately log in to get a token
         WAR.NET.send({
             action   = "login",
@@ -160,10 +160,10 @@ function WAR.AUTH.handle(msg)
         WAR.AUTH.token  = msg.token
         WAR.AUTH.state  = "logged_in"
         if msg.token then
-            print("[WAR AUTH] login " .. tostring(msg.username))
+            WAR.log("[WAR AUTH] login " .. tostring(msg.username))
             save_session(msg.username, msg.token)
         else
-            print("[WAR AUTH] token_login " .. tostring(msg.username))
+            WAR.log("[WAR AUTH] token_login " .. tostring(msg.username))
         end
         WAR.AUTH._pending_username = nil
         WAR.AUTH._pending_verifier = nil

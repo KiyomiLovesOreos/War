@@ -3,6 +3,17 @@
 WAR = SMODS.current_mod
 WAR.ROOT = WAR.path
 
+-- Set to 0 to silence verbose in-game logging (scoring, auth, network events).
+-- Error and warning prints are always shown regardless.
+WAR.console_log = 0
+
+-- Set to 1 to connect to the beta relay (port 7778) instead of the live server.
+WAR.beta_test = 0
+
+function WAR.log(...)
+    if WAR.console_log == 1 then print(...) end
+end
+
 function WAR.load(path)
     return SMODS.load_file(path)()
 end

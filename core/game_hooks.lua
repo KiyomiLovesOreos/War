@@ -30,7 +30,7 @@ function Game:update(dt)
         _auto_login_done = true
         WAR.AUTH.auto_login(function(ok)
             if ok then
-                print("[WAR AUTH] auto-login as " .. tostring(WAR.AUTH.user))
+                WAR.log("[WAR AUTH] auto-login as " .. tostring(WAR.AUTH.user))
             end
             if WAR.UI.update_connection_status then WAR.UI.update_connection_status() end
         end)
@@ -246,7 +246,7 @@ function WAR.GAME.send_hand_state(score, hands)
         handsLeft = out_hands,
         skips     = (G.GAME and G.GAME.skips) or 0,
     })
-    print(("[WAR NET] playHand score=%s hands=%s"):format(WAR.SCORE.encode(out_score), out_hands))
+    WAR.log(("[WAR NET] playHand score=%s hands=%s"):format(WAR.SCORE.encode(out_score), out_hands))
 end
 
 -- Final board for the end screen. Keys only; names resolve on each client.
@@ -276,7 +276,7 @@ function WAR.GAME.send_board_stats()
         consumables = board.consumables,
         deck        = board.deck,
     })
-    print(("[WAR NET] gameStats jokers=%d consumables=%d"):format(#board.jokers, #board.consumables))
+    WAR.log(("[WAR NET] gameStats jokers=%d consumables=%d"):format(#board.jokers, #board.consumables))
 end
 
 -- Drop the blind target to my score so vanilla ends the round as a pass.
