@@ -16,6 +16,7 @@ if WAR.is_pvp_blind() then
     local atlas_key, row = WAR.UI.rival_icon_row()
     local pos = { x = 0, y = row }
     self.children.animatedSprite = SMODS.create_sprite(self.T.x, self.T.y, self.T.w, self.T.h, atlas_key, pos)
+    self.children.main_blind_icon = WAR.UI.mini_blind(obj, self.T.w * 0.4, self.children.animatedSprite)
 end
 """
 
@@ -36,6 +37,7 @@ if ante >= (cfg.pvp_start_ante or 3) and blind_choice.config.boss then
     local atlas_key, row = WAR.UI.rival_icon_row()
     local pos = { x = 0, y = row }
     blind_choice.animation = SMODS.create_sprite(0, 0, 1.4, 1.4, atlas_key, pos)
+    blind_choice.animation.children.main_blind_icon = WAR.UI.mini_blind(blind_choice.config, 1.4 * 0.4, blind_choice.animation)
 end
 """
 
