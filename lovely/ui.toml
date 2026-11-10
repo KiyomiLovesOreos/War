@@ -1,0 +1,49 @@
+[manifest]
+version = "1.0.0"
+dump_lua = false
+priority = 0
+
+[[patches]]
+[patches.pattern]
+target       = "blind.lua"
+pattern      = "self.children.animatedSprite.states = self.states"
+position     = "before"
+match_indent = true
+payload      = """
+if WAR.is_pvp_blind() then
+    local atlas_key, row = WAR.UI.rival_icon_row()
+    local pos = { x = 0, y = row }
+    self.children.animatedSprite = SMODS.create_sprite(self.T.x, self.T.y, self.T.w, self.T.h, atlas_key, pos)
+end
+"""
+
+[[patches]]
+[patches.pattern]
+target       = "functions/UI_definitions.lua"
+pattern      = "blind_choice.animation:define_draw_steps({"
+position     = "before"
+match_indent = true
+payload      = """
+local cfg  = (WAR.LOBBY and WAR.LOBBY.config) or {}
+local ante = (G.GAME and G.GAME.round_resets and G.GAME.round_resets.ante) or 1
+local is_pvp_ante = false
+if ante >= (cfg.pvp_start_ante or 3) and blind_choice.config.boss then
+    is_pvp_ante = true
+    local atlas_key, row = WAR.UI.rival_icon_row()
+    local pos = { x = 0, y = row }
+    blind_choice.animation = SMODS.create_sprite(0, 0, 1.4, 1.4, atlas_key, pos)
+end
+"""
+
+[[patches]]
+[patches.pattern]
+target       = "functions/UI_definitions.lua"
+pattern      = "local text_table = G.localization.descriptions[target.set][target.key].text_parsed"
+position     = "before"
+match_indent = true
+payload      = """
+if is_pvp_ante then
+    local opp_name = WAR.LOBBY.is_host and WAR.LOBBY.guest_name or WAR.LOBBY.host_name
+    loc_name = opp_name
+end
+"""
