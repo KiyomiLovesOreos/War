@@ -146,4 +146,36 @@ function WAR.UI.create_spacer(size, row)
     end
 end
 
+-- convenience function for creating a blind sprite
+function WAR.UI.create_blind_sprite(center, x, y, w, h)
+    return SMODS.create_sprite(x, y, w, h, center.atlas or "blind_chips", center.pos or G.P_BLINDS.bl_small.pos)
+end
+
+-- creates a mini blind icon that is attached to a given node on the bottom left
+function WAR.UI.mini_blind(center, size, node)
+    return UIBox({
+        definition = {
+            n = G.UIT.ROOT,
+            config = {
+                colour = G.C.CLEAR,
+            },
+            nodes = {
+                {
+                    n = G.UIT.O,
+                    config = {
+                        object = WAR.UI.create_blind_sprite(center, node.T.x, node.T.y, size, size)
+                    }
+                }
+            }
+        },
+        config = {
+            parent = node,
+            align = "bli",
+            offset = {
+                x = -size / 6, y = size / 6
+            },
+        }
+    })
+end
+
 print("[WAR] ui/utils loaded")
