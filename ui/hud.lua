@@ -579,3 +579,12 @@ G.FUNCS.war_timer_toggle = function(e)
 end
 
 print("[WAR] ui/hud loaded")
+
+-- If the blind is a PVP blind, set the name of the blind to the opponent's name
+local set_text_hook = Blind.set_text
+function Blind:set_text()
+    set_text_hook(self)
+    if self.config.blind and WAR.is_rival_blind(self.config.blind) then
+        self.loc_name = WAR.LOBBY.is_host and WAR.LOBBY.guest_name or WAR.LOBBY.host_name
+    end
+end

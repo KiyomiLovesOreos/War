@@ -3,6 +3,8 @@ version = "1.0.0"
 dump_lua = false
 priority = 0
 
+# Replace boss blind sprite with opponent's chosen blind sprite when blind is set
+# Only happens during PVP
 [[patches]]
 [patches.pattern]
 target       = "blind.lua"
@@ -17,6 +19,8 @@ if WAR.is_pvp_blind() then
 end
 """
 
+# Replace boss blind sprite during blind select with opponent's chosen blind sprite
+# Only happens during PVP
 [[patches]]
 [patches.pattern]
 target       = "functions/UI_definitions.lua"
@@ -35,6 +39,8 @@ if ante >= (cfg.pvp_start_ante or 3) and blind_choice.config.boss then
 end
 """
 
+# Replace blind name with opponent name during blind select
+# Only happens during PVP
 [[patches]]
 [patches.pattern]
 target       = "functions/UI_definitions.lua"
