@@ -148,6 +148,7 @@ function WAR.SYNC.tick()
             if m.back      then WAR.LOBBY.config.back      = m.back end
             if m.stake     then WAR.LOBBY.config.stake     = tonumber(m.stake) end
             if m.challenge then WAR.LOBBY.config.challenge = m.challenge end
+            if m.sleeve    ~= nil then WAR.LOBBY.config.sleeve = (m.sleeve ~= "") and m.sleeve or nil end
             if m.pvp_start_ante then
                 WAR.LOBBY.config.pvp_start_ante = tonumber(m.pvp_start_ante)
             end
@@ -196,6 +197,7 @@ function WAR.SYNC.tick()
         elseif a == "enemyStats" then
             WAR.GAME.enemy_stats = {
                 jokers      = m.jokers or {},
+                joker_names = m.joker_names or {},
                 consumables = m.consumables or {},
                 deck        = m.deck,
             }
@@ -288,9 +290,15 @@ function WAR.SYNC.on_start_game(m)
     if m.back      then WAR.LOBBY.config.back      = m.back end
     if m.stake     then WAR.LOBBY.config.stake     = tonumber(m.stake) end
     if m.challenge then WAR.LOBBY.config.challenge = m.challenge end
+    if m.sleeve    ~= nil then WAR.LOBBY.config.sleeve = (m.sleeve ~= "") and m.sleeve or nil end
 
     if G.OVERLAY_MENU then G.FUNCS.exit_overlay_menu() end
     WAR.UI.hide_lobby()
+
+    -- Both sides run on the all-unlocked War profile. A guest who never opened
+    -- the deck picker is still on their own profile, where the deck back and the
+    -- sleeve would draw their locked art even though the run uses them.
+    if WAR.UI.enter_war_profile then WAR.UI.enter_war_profile() end
 
     -- vanilla start_run wants the challenge object, not its id: it reads
     -- args.challenge.deck / .jokers / .rules when building the run.
@@ -302,6 +310,12 @@ function WAR.SYNC.on_start_game(m)
         back      = m.back,
         challenge = challenge,
     }
+    -- CardSleeves reads the sleeve off the run args while init_game_object
+    -- builds G.GAME; without this the run starts sleeveless even though the
+    -- lobby panel showed one.
+    if WAR.LOBBY.config.sleeve then
+        params.casl_sleeve_choice = WAR.LOBBY.config.sleeve
+    end
 
     -- Short pause so UI finishes closing, then wipe-transition into the run
     G.E_MANAGER:add_event(Event({
@@ -430,8 +444,12 @@ end
 function WAR.SYNC.on_game_over(i_won)
     WAR.GAME.active       = false
     WAR.GAME.is_pvp_blind = false
-    if WAR.UI.exit_war_profile then WAR.UI.exit_war_profile() end
+    -- Capture board data while game objects (G.jokers etc.) are still live.
+    -- G:load_profile inside exit_war_profile may clear joker/consumable state,
+    -- so both the relay send and the end-screen snapshot must happen first.
     if WAR.GAME.send_board_stats then WAR.GAME.send_board_stats() end
+    WAR.GAME._my_board_snapshot = WAR.GAME.my_board and WAR.GAME.my_board()
+    if WAR.UI.exit_war_profile then WAR.UI.exit_war_profile() end
     WAR.GAME._end_screen     = not not i_won
     WAR.GAME._stats_refreshed = nil
     local function show()

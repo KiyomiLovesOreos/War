@@ -138,6 +138,9 @@ WAR.LOBBY = {
         comeback_gold          = true,
         timer_seconds          = 90,
         pvp_boss_effects       = true,  -- false = boss blind effects suppressed during PvP
+        back                   = "Red Deck",
+        stake                  = 1,
+        -- sleeve = nil by default (no sleeve)
     },
     -- display refs for lobby bar DynaText
     host_name   = nil,
@@ -164,6 +167,8 @@ WAR.GAME = {
     is_pvp_blind     = false,   -- set by startBlind, cleared when the round resolves
     end_pvp_pending  = false,   -- set when endPvP arrives; cleared when state advances
     pvp_lost         = false,   -- set by on_end_pvp; used for comeback gold
+    non_pvp_failed   = false,   -- set when failRound is sent; used for comeback gold
+    _blind_chips_target = nil,  -- original chip requirement saved before Mr. Bones can modify it
     _pending_blind_e = nil,    -- stored e from intercepted select_blind
     _blind_starting  = false,  -- flag: re-entering select_blind from startBlind
     round_ended      = false,  -- duplicate end_round guard, cleared by new_round

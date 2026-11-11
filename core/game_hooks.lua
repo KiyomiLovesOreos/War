@@ -23,6 +23,14 @@ function pseudorandom(key, mn, mx)
     return r
 end
 
+-- The pause menu row is hidden by a Lovely patch; this stops the copy button
+-- (or any mod that calls it) from putting the seed on the clipboard.
+local _orig_copy_seed = G.FUNCS.copy_seed
+G.FUNCS.copy_seed = function(e)
+    if WAR.GAME.active then return end
+    if _orig_copy_seed then return _orig_copy_seed(e) end
+end
+
 local _orig_game_update = Game.update
 function Game:update(dt)
     _orig_game_update(self, dt)
@@ -90,9 +98,16 @@ end
 
 local _orig_start_run = Game.start_run
 function Game:start_run(start_params)
-    if WAR.GAME.active and WAR.LOBBY.config.seed then
+    if WAR.GAME.active and (WAR.LOBBY.config.seed or WAR.LOBBY.config.sleeve) then
         start_params = start_params or {}
-        start_params.seed = tostring(WAR.LOBBY.config.seed)
+        if WAR.LOBBY.config.seed then
+            start_params.seed = tostring(WAR.LOBBY.config.seed)
+        end
+        -- CardSleeves only looks at the run args, so a mid-match restart needs
+        -- the sleeve put back or the new run comes up without it.
+        if WAR.LOBBY.config.sleeve then
+            start_params.casl_sleeve_choice = WAR.LOBBY.config.sleeve
+        end
     end
     _orig_start_run(self, start_params)
     if WAR.GAME.active then
@@ -138,12 +153,15 @@ end
 -- Try .number, then :to_number(), then the printed form.
 function WAR.GAME.my_chips()
     local raw = G.GAME and G.GAME.chips
-    if type(raw) == "number" then return raw end
+    -- tonumber handles plain numbers and LuaJIT FFI cdata (Amulet BigNum).
+    local n = tonumber(raw)
+    if n then return n end
+    -- Lua-table BigNum (other mods): try .number, :to_number(), then tostring.
     if type(raw) == "table" then
         if type(raw.number) == "number" then return raw.number end
         if type(raw.to_number) == "function" then
-            local ok, n = pcall(raw.to_number, raw)
-            if ok and type(n) == "number" then return n end
+            local ok, v = pcall(raw.to_number, raw)
+            if ok and type(v) == "number" then return v end
         end
     end
     return tonumber((tostring(raw):gsub(",", ""):gsub("%s", ""))) or 0
@@ -249,20 +267,28 @@ function WAR.GAME.send_hand_state(score, hands)
     WAR.log(("[WAR NET] playHand score=%s hands=%s"):format(WAR.SCORE.encode(out_score), out_hands))
 end
 
--- Final board for the end screen. Keys only; names resolve on each client.
-local function _board_keys(area)
-    local out = {}
+-- Final board for the end screen. Keys and display names; names are sent
+-- alongside keys so the end screen can show a text fallback for modded jokers
+-- even when Card() construction fails on the receiver.
+local function _board_entries(area)
+    local keys, names = {}, {}
     for _, card in ipairs(area and area.cards or {}) do
         local center = card.config and card.config.center
-        if center and center.key then out[#out + 1] = center.key end
+        if center and center.key then
+            keys[#keys + 1]  = center.key
+            names[#names + 1] = center.name or center.key
+        end
     end
-    return out
+    return keys, names
 end
 
 function WAR.GAME.my_board()
+    local jkeys, jnames = _board_entries(G.jokers)
+    local ckeys         = (_board_entries(G.consumeables))
     return {
-        jokers      = _board_keys(G.jokers),
-        consumables = _board_keys(G.consumeables),
+        jokers      = jkeys,
+        joker_names = jnames,
+        consumables = ckeys,
         deck        = G.GAME and G.GAME.back and G.GAME.back.name,
     }
 end
@@ -273,6 +299,7 @@ function WAR.GAME.send_board_stats()
     WAR.NET.send({
         action      = "gameStats",
         jokers      = board.jokers,
+        joker_names = board.joker_names,
         consumables = board.consumables,
         deck        = board.deck,
     })
@@ -302,7 +329,11 @@ function WAR.GAME.settle_chips()
                 local e    = queue[i]
                 local ease = e and e.ease
                 if ease and ease.ref_table == G.GAME and ease.ref_value == "chips" then
-                    local target = math.floor(ease.end_val or WAR.GAME.my_chips())
+                    local target = math.floor(
+                        tonumber(ease.end_val)
+                        or tonumber((tostring(ease.end_val):gsub(",",""):gsub("%s","")))
+                        or WAR.GAME.my_chips()
+                    )
                     G.GAME.chips   = target
                     ease.start_val = target
                     ease.end_val   = target
@@ -401,8 +432,20 @@ local _orig_update_selecting_hand = Game.update_selecting_hand
 function Game:update_selecting_hand(dt)
     -- Reset the per-hand send flag whenever we're in a selection phase for a
     -- non-pvp blind, so update_draw_to_hand / update_new_round fire once per hand.
+    -- Also save the blind chip target here on the first hand selection — this is
+    -- after blind.chips is fully computed and before Mr. Bones can fire, making
+    -- it more reliable than saving in Blind.set_blind (where self.chips may be
+    -- nil or a preliminary value depending on the call site).
     if WAR.GAME.active and not WAR.GAME.pvp_round() then
         WAR.GAME._hand_state_sent = false
+        if not WAR.GAME._blind_chips_target and G.GAME and G.GAME.blind then
+            local c = G.GAME.blind.chips
+            local n = tonumber(c)
+                   or tonumber((tostring(c):gsub(",", ""):gsub("%s", "")))
+            if type(n) == "number" and n > 0 then
+                WAR.GAME._blind_chips_target = n
+            end
+        end
     end
     if WAR.GAME.active and WAR.GAME.pvp_round()
        and (G.GAME.current_round.hands_left or 0) > 0
@@ -432,18 +475,54 @@ end
 -- Non-pvp: on first entry to NEW_ROUND the chip total is settled. Report it,
 -- check for a failed blind, then block the run-win trigger for the whole
 -- round eval (ante 8 mid-match shouldn't end the game).
+-- True when Mr. Bones is present, undebuffed, and the last hand scored at
+-- least 25% of the blind requirement — mirroring vanilla's own threshold.
+-- Mr. Bones still saves the round in War, but the blind counts as a failure:
+-- failRound is sent and a life is deducted; only the text on the joker changes
+-- (see the card_eval_status_text override below).
+local function mr_bones_would_save(chips, target)
+    if not (chips and target and chips >= target * 0.25) then return false end
+    for _, card in ipairs(G.jokers and G.jokers.cards or {}) do
+        local key = card.config and card.config.center and card.config.center.key
+        if key == "j_mr_bones" and not card.debuff then return true end
+    end
+    return false
+end
+
+-- Replace Mr. Bones' "SAVED!" popup with a life-lost message during a War
+-- match — the joker still rescues the run, but the blind counts as a failed
+-- blind (failRound is sent and a life is deducted).
+local _orig_card_eval_status_text = card_eval_status_text
+card_eval_status_text = function(card, t, mult, x_mult, chips, vars)
+    if WAR.GAME.active and vars then
+        local center = card and card.config and card.config.center
+        if center and center.key == "j_mr_bones" then
+            vars = { message = localize("war_life_lost"), colour = G.C.RED }
+        end
+    end
+    return _orig_card_eval_status_text(card, t, mult, x_mult, chips, vars)
+end
+
 local _orig_update_new_round = Game.update_new_round
 function Game:update_new_round(dt)
     if WAR.GAME.active and not WAR.GAME.pvp_round()
        and not WAR.GAME._hand_state_sent then
         WAR.GAME._hand_state_sent = true
         WAR.GAME.send_hand_state()
-        if WAR.GAME.hands_left() < 1 and G.GAME.blind then
+        -- Secondary check: if _blind_chips_target is still set here, end_round
+        -- hasn't cleared it yet (Mr. Bones path arrives in NEW_ROUND before
+        -- end_round fires). Send failRound now; end_round's check is a no-op
+        -- once the target is cleared.
+        if WAR.GAME._blind_chips_target then
             local chips  = WAR.GAME.my_chips()
-            local target = type(G.GAME.blind.chips) == "number" and G.GAME.blind.chips
-            if target and chips < target then
+            local target = WAR.GAME._blind_chips_target
+            WAR.GAME._blind_chips_target = nil
+            if chips < target then
                 WAR.NET.send({ action = "failRound" })
-                WAR.GAME.force_pass()
+                if not mr_bones_would_save(chips, target) then
+                    WAR.GAME.force_pass()
+                end
+                WAR.GAME.non_pvp_failed = true
             end
         end
     end
@@ -459,11 +538,35 @@ end
 
 -- end_round can be reached twice in the same blind (a boss defeat plus a state
 -- re-entry). Only the first call per round should run.
+-- Non-pvp failure is detected here using the saved _blind_chips_target, which
+-- is set once per blind in update_selecting_hand and cleared by new_round.
+-- We do NOT check hands_left: by the time end_round fires from the NEW_ROUND
+-- state (the Mr. Bones "passed" path), current_round.hands_left has already
+-- been reset to the new round's starting value, so < 1 would be false.
+-- Using the saved target alone is sufficient — a passed blind has chips >= target
+-- and the check never fires, regardless of hands remaining.
 local _orig_end_round = end_round
 end_round = function(...)
     if WAR.GAME.active then
         if WAR.GAME.round_ended then return end
         WAR.GAME.round_ended = true
+        -- Only check when we have a saved target (set at first SELECTING_HAND,
+        -- cleared when this fires or when new_round runs for the next blind).
+        if not WAR.GAME.pvp_round() and WAR.GAME._blind_chips_target then
+            local chips  = WAR.GAME.my_chips()
+            local target = WAR.GAME._blind_chips_target
+            WAR.GAME._blind_chips_target = nil
+            if chips < target then
+                WAR.NET.send({ action = "failRound" })
+                -- If Mr. Bones would fire (threshold met + joker present), it
+                -- handles the round transition itself; skip force_pass so we
+                -- don't double-defeat.  failRound + life deduction still apply.
+                if not mr_bones_would_save(chips, target) then
+                    WAR.GAME.force_pass()
+                end
+                WAR.GAME.non_pvp_failed = true
+            end
+        end
     end
     return _orig_end_round(...)
 end
@@ -471,6 +574,9 @@ end
 -- Cash-out: on a rival round the "score at least" figure is the opponent's
 -- final score, not the boss's own requirement.
 -- When the player lost and comeback_gold is on, a bonus row is added here.
+-- _comeback_pending tracks dollars owed so the bottom row (which sets
+-- G.GAME.current_round.dollars) includes the comeback in the Cash Out total.
+local _comeback_pending = 0
 local _orig_add_round_eval_row = add_round_eval_row
 add_round_eval_row = function(config)
     if config and config.name == "blind1" and WAR.GAME.active and WAR.GAME.pvp_round()
@@ -480,20 +586,46 @@ add_round_eval_row = function(config)
         local ok, err = pcall(_orig_add_round_eval_row, config)
         G.GAME.blind.chip_text = prev
         if not ok then error(err) end
-        -- Comeback gold: awarded when we lost and the option is enabled
+        -- Comeback gold: awarded when we lost and the option is enabled.
+        -- The $5 is included in the bottom row's total so cash_out awards it.
         if WAR.GAME.pvp_lost and WAR.LOBBY.config.comeback_gold ~= false then
+            _comeback_pending = _comeback_pending + 5
             _orig_add_round_eval_row({
                 bonus   = true,
                 name    = "war_comeback",
                 pitch   = (config.pitch or 0.9) + 0.06,
-                dollars = 4,
+                dollars = 5,
             })
         end
         return
     end
+    -- Non-pvp blind failure comeback: awarded when the chip target wasn't met
+    -- (even if Mr. Bones saved the run) and comeback_gold is enabled.
+    if config and config.name == "blind1" and WAR.GAME.active and not WAR.GAME.pvp_round()
+       and WAR.GAME.non_pvp_failed and WAR.LOBBY.config.comeback_gold ~= false then
+        WAR.GAME.non_pvp_failed = false
+        _orig_add_round_eval_row(config)
+        _comeback_pending = _comeback_pending + 5
+        _orig_add_round_eval_row({
+            bonus   = true,
+            name    = "war_comeback",
+            pitch   = (config.pitch or 0.9) + 0.06,
+            dollars = 5,
+        })
+        return
+    end
+    -- Bottom row: inject any pending comeback gold into the Cash Out total.
+    -- This is what sets G.GAME.current_round.dollars, which cash_out uses.
+    if config and config.name == "bottom" and _comeback_pending > 0 then
+        local extra = _comeback_pending
+        _comeback_pending = 0
+        return _orig_add_round_eval_row({
+            name    = "bottom",
+            dollars = (config.dollars or 0) + extra,
+        })
+    end
     return _orig_add_round_eval_row(config)
 end
-
 -- The boss blind itself is untouched: a rival round is a real vanilla boss with
 -- the rival layered on top. Only the target and the HUD change.
 
@@ -510,8 +642,10 @@ function Blind:set_blind(blind, reset, silent)
         WAR.UI.update_blind_hud()
         local chip = self.children and self.children.animatedSprite
         if chip then WAR.UI.attach_rival_icon(chip, "blind") end
-    elseif self.children and self.children.animatedSprite and WAR.UI.clear_rival_icon then
-        WAR.UI.clear_rival_icon(self.children.animatedSprite)
+    else
+        if self.children and self.children.animatedSprite and WAR.UI.clear_rival_icon then
+            WAR.UI.clear_rival_icon(self.children.animatedSprite)
+        end
     end
 end
 
@@ -573,6 +707,8 @@ new_round = function(...)
     if WAR.GAME.active then
         WAR.NET.send({ action = "newRound" })
         WAR.GAME.round_ended = false
+        WAR.GAME._blind_chips_target = nil
+        WAR.GAME.non_pvp_failed      = false
     end
     return _orig_new_round_fn(...)
 end

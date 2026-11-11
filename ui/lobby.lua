@@ -10,10 +10,71 @@ WAR.UI._code_revealed = false
 WAR.UI._lobby_deck_info = ""
 
 local function _get_stake_name(order)
-    return (G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
-            and G.P_CENTER_POOLS.Stake[order]
-            and G.P_CENTER_POOLS.Stake[order].name)
-           or (localize('war_stake') .. tostring(order))
+    local center = G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
+                   and G.P_CENTER_POOLS.Stake[order]
+    if not center then
+        return localize('war_stake') .. tostring(order)
+    end
+    -- Use the same path as SMODS's stake selector: localize by center key.
+    -- center.name is nil on modded stake Centers (the display name lives on the
+    -- SMODS object, not the Center); localize({type='name_text',...}) is the
+    -- canonical route for both vanilla and modded stakes.
+    local name = center.key and localize({type='name_text', set='Stake', key=center.key})
+    if name and name ~= "" and name ~= center.key then return name end
+    -- Fall back: raw name on center or SMODS object, then numbered fallback.
+    local smods_stake = G.P_STAKES and center.key and G.P_STAKES[center.key]
+    return center.name
+        or (smods_stake and smods_stake.name)
+        or (localize('war_stake') .. tostring(order))
+end
+
+-- Stake icon for the lobby panel. Vanilla stakes all sit in the shipped "chips"
+-- atlas (the gold stake even has its own shader draw), so they go through the
+-- vanilla helper; a modded stake names its own atlas and is built here instead.
+function WAR.UI.stake_sprite(order, scale)
+    local center = G.P_CENTER_POOLS and G.P_CENTER_POOLS.Stake
+                   and G.P_CENTER_POOLS.Stake[order]
+    local atlas_key = center and (center.atlas or "chips")
+    if not center or not center.pos or not atlas_key or atlas_key == "chips" then
+        return get_stake_sprite(order, scale)
+    end
+    local atlas = G.ASSET_ATLAS and G.ASSET_ATLAS[atlas_key]
+    if not atlas then return get_stake_sprite(order, scale) end
+    local spr = Sprite(0, 0, scale, scale, atlas, center.pos)
+    spr.states.drag.can = false
+    return spr
+end
+
+-- The Back center the lobby's config actually points at. The relay carries the
+-- deck's display name, so names and keys both have to resolve; a challenge goes
+-- through its own deck type (vanilla keeps the challenge back on b_challenge).
+function WAR.UI.deck_center(back_key, ch_tbl)
+    local function resolve(v)
+        if not v or v == "" then return nil end
+        if G.P_CENTERS then
+            for _, c in pairs(G.P_CENTERS) do
+                if c.set == "Back" and (c.key == v or c.name == v) then return c end
+            end
+        end
+        return get_deck_from_name and get_deck_from_name(v) or nil
+    end
+    if ch_tbl then
+        local t = ch_tbl.deck and ch_tbl.deck.type
+        if type(t) == "table" then t = t.name or t.key end
+        return resolve(t)
+            or resolve(ch_tbl.starting_params and ch_tbl.starting_params.back)
+            or (G.P_CENTERS and G.P_CENTERS.b_challenge)
+    end
+    return resolve(back_key)
+end
+
+-- Sprite for a Back center, taken from the center's own atlas so modded decks
+-- and the challenge back show their real art instead of the vanilla sheet.
+function WAR.UI.deck_sprite(center, w, h)
+    if not center or not center.pos then return nil end
+    local atlas = G.ASSET_ATLAS and G.ASSET_ATLAS[center.atlas or "centers"]
+    if not atlas then return nil end
+    return Sprite(0, 0, w or 1.6, h or 2.13, atlas, center.pos)
 end
 
 function WAR.UI.update_lobby_status()
@@ -485,7 +546,7 @@ function G.UIDEF.war_players_popup()
 end
 
 function G.FUNCS.war_lobby_players(e)
-    WAR.UI.open_instant(G.UIDEF.war_players_popup())
+    WAR.UI.open_popup(G.UIDEF.war_players_popup())
 end
 
 -- WAR._deck_selecting:    set while the setup_run overlay is open for War deck selection.
@@ -496,9 +557,43 @@ WAR._deck_select_return = nil
 -- Profile 69 is the dedicated War profile. It is switched to before deck selection opens
 -- and switched back when the game ends. Run saves (stats, wins, joker usage) land in
 -- profile 4, leaving the player's main profile untouched.
-local WAR_PROFILE = 69  -- overridden at runtime from WAR.CONFIG.war_profile
+-- "W" is pre-initialised in G.PROFILES by the lovely patch in war.toml (before game.lua's
+-- first load_profile), so the slot already has all_unlocked=true when enter_war_profile runs.
+local WAR_PROFILE = "W"  -- string key, separate from vanilla's numeric slots (1-3)
 
 WAR.UI._war_orig_profile = nil   -- nil when not in a War session
+WAR.UI._war_unlocks      = nil   -- { centers/blinds/tags = {key -> original flags} }
+
+-- `all_unlocked` on the profile object only drives vanilla's unlock-all button.
+-- The sprite code reads the per-center flags instead: Back:set_sprite_pos falls
+-- back to the locked back art and CardSleeves:is_unlocked() swaps in the locked
+-- sleeve art, so a guest on a fresh profile saw both locked even though the run
+-- used them. Flip the flags like vanilla's unlock-all does, and keep the
+-- originals so the player's own profile is exactly as it was on the way out.
+local function _unlock_sweep(src, store)
+    for k, v in pairs(src) do
+        if not v.demo and not v.wip then
+            store[k] = { unlocked = v.unlocked, discovered = v.discovered, alerted = v.alerted }
+            v.unlocked, v.discovered, v.alerted = true, true, true
+        end
+    end
+end
+
+local function _relock_sweep(src, store)
+    for k, v in pairs(src) do
+        local o = store[k]
+        if o and not v.demo and not v.wip then
+            v.unlocked, v.discovered, v.alerted = o.unlocked, o.discovered, o.alerted
+        end
+    end
+end
+
+local function _refresh_unlock_ui()
+    pcall(function()
+        if set_profile_progress   then set_profile_progress()   end
+        if set_discover_tallies   then set_discover_tallies()   end
+    end)
+end
 
 -- Switch to the War profile. No-op if already on it.
 function WAR.UI.enter_war_profile()
@@ -510,14 +605,33 @@ function WAR.UI.enter_war_profile()
     G.PROFILES[slot] = G.PROFILES[slot] or {}
     G:load_profile(slot)
     G.PROFILES[slot].all_unlocked = true
+    if not WAR.UI._war_unlocks then
+        local snap = { centers = {}, blinds = {}, tags = {} }
+        _unlock_sweep(G.P_CENTERS, snap.centers)
+        if G.P_BLINDS then _unlock_sweep(G.P_BLINDS, snap.blinds) end
+        if G.P_TAGS   then _unlock_sweep(G.P_TAGS,   snap.tags)   end
+        WAR.UI._war_unlocks = snap
+        _refresh_unlock_ui()
+    end
 end
 
--- Return to the player's original profile.
+-- Return to the player's original profile and put the flags back.
 function WAR.UI.exit_war_profile()
     local orig = WAR.UI._war_orig_profile
     if not orig then return end
     WAR.UI._war_orig_profile = nil
     G:load_profile(orig)
+    -- Immediately persist the restored profile so a subsequent crash or
+    -- force-quit can't leave G.SETTINGS.profile = "W" on disk.
+    if G.save_settings then pcall(G.save_settings, G) end
+    local snap = WAR.UI._war_unlocks
+    if snap then
+        WAR.UI._war_unlocks = nil
+        _relock_sweep(G.P_CENTERS, snap.centers)
+        if G.P_BLINDS then _relock_sweep(G.P_BLINDS, snap.blinds) end
+        if G.P_TAGS   then _relock_sweep(G.P_TAGS,   snap.tags)   end
+        _refresh_unlock_ui()
+    end
 end
 
 -- Hook 1: suppress vanilla Continue tab (greyed-out fallback; Lovely patch also handles it).
@@ -568,6 +682,10 @@ G.FUNCS.start_run = function(e, args)
             if ch and ch.seed and ch.seed ~= "" then _seed = ch.seed end
         end
         WAR.LOBBY.config.seed = (_seed and _seed ~= "") and _seed or nil
+        -- CardSleeves compat: capture sleeve choice if available.
+        if WAR.COMPAT and WAR.COMPAT.capture_sleeve then
+            WAR.LOBBY.config.sleeve = WAR.COMPAT.capture_sleeve(args)
+        end
         WAR.UI.update_deck_info()
         if WAR.LOBBY.code and WAR.LOBBY.is_host then
             WAR.NET.send({
@@ -576,6 +694,7 @@ G.FUNCS.start_run = function(e, args)
                 stake     = WAR.LOBBY.config.stake,
                 challenge = WAR.LOBBY.config.challenge,
                 seed      = WAR.LOBBY.config.seed or "",
+                sleeve    = WAR.LOBBY.config.sleeve or "",
             })
         end
         if return_dest == "rulesets" then
@@ -966,33 +1085,35 @@ function WAR.UI.create_lobby_panels()
     local seed  = (cfg.seed and cfg.seed ~= "" and cfg.seed ~= 0)
                   and tostring(cfg.seed) or localize('war_panel_seed_random')
 
-    -- Deck sprite — challenges may specify their own back key
+    -- Deck sprite — challenges resolve through their own deck, and a modded deck
+    -- lives in its own atlas, so the center decides which sheet to draw from.
     local deck_node
-    local back_pos = nil
-    local ch_tbl   = WAR.challenge_by_id(cfg.challenge)
-    local back_key = cfg.back
-    if ch_tbl then
-        back_key = (ch_tbl.starting_params and ch_tbl.starting_params.back)
-                or (ch_tbl.deck and ch_tbl.deck.type ~= "Challenge Deck" and ch_tbl.deck.type)
-                or "b_default"
+    local ch_tbl      = WAR.challenge_by_id(cfg.challenge)
+    local deck_center = WAR.UI.deck_center(cfg.back, ch_tbl)
+    if not deck_center and G.GAME and G.GAME.selected_back
+       and G.GAME.selected_back.effect then
+        deck_center = G.GAME.selected_back.effect.center
     end
-    if back_key and G.P_CENTERS then
-        for _, center in pairs(G.P_CENTERS) do
-            if center.set == "Back" and (center.key == back_key or center.name == back_key) and center.pos then
-                back_pos = center.pos; break
+    if deck_center then
+        local ok, deck_spr = pcall(WAR.UI.deck_sprite, deck_center, 1.6, 2.13)
+        if ok and deck_spr then
+            local sleeve_key = cfg.sleeve
+            if sleeve_key and sleeve_key ~= ""
+               and WAR.COMPAT and WAR.COMPAT.sleeve_sprite then
+                local ok2, sleeve_spr = pcall(WAR.COMPAT.sleeve_sprite, sleeve_key, 1.6, 2.13)
+                if ok2 and sleeve_spr then
+                    local orig_draw = deck_spr.draw
+                    deck_spr.draw = function(self)
+                        if orig_draw then orig_draw(self) end
+                        -- Sync both T and VT so the sleeve sits exactly on the
+                        -- deck through layout transitions and panel drags.
+                        sleeve_spr.T  = self.T
+                        sleeve_spr.VT = self.VT or self.T
+                        sleeve_spr:draw()
+                    end
+                end
             end
-        end
-    end
-    if not back_pos and G.GAME and G.GAME.selected_back then
-        back_pos = G.GAME.selected_back.pos
-    end
-    if back_pos then
-        local ok, spr = pcall(function()
-            local atlas = G.ASSET_ATLAS["centers"]
-            return atlas and Sprite(0, 0, 1.6, 2.13, atlas, back_pos)
-        end)
-        if ok and spr then
-            deck_node = { n=G.UIT.O, config={ object=spr, w=1.6, h=2.13 } }
+            deck_node = { n=G.UIT.O, config={ object=deck_spr, w=1.6, h=2.13 } }
         end
     end
     if not deck_node then
@@ -1006,7 +1127,7 @@ function WAR.UI.create_lobby_panels()
     local RW = 1.8    -- min box width (drives right panel visible width: ~1.8+0.24+0.24 ≈ 2.3u)
     local RH = 0.60   -- uniform box height for grid look
 
-    local stake_sprite = get_stake_sprite(ch_tbl and 1 or stake, 0.32)
+    local stake_sprite = WAR.UI.stake_sprite(ch_tbl and 1 or stake, 0.32)
     local stake_name   = ch_tbl
         and (localize(ch_tbl.id, "challenge_names") or ch_tbl.name or localize('war_panel_challenge'))
         or _get_stake_name(stake)

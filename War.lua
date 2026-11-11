@@ -1,4 +1,6 @@
 -- War.lua
+-- Copyright (C) 2026 Amolyte
+-- Licensed under the GNU General Public License v3.0 — see LICENSE.
 
 WAR = SMODS.current_mod
 WAR.ROOT = WAR.path
@@ -54,3 +56,5 @@ WAR.load("ui/icon_select.lua")
 WAR.load("ui/hud.lua")
 WAR.load("ui/popups.lua")
 WAR.load("ui/lobby.lua")
+
+WAR.load_dir("compat")

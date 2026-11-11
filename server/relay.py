@@ -123,11 +123,12 @@ def get_user_entitlements(username):
 def validate_icon(username, icon_key):
     if not icon_key or icon_key == 'default':
         return icon_key or 'default'
+    # Reject keys that aren't registered icons at all.
     if icon_key not in KNOWN_ICONS:
         return 'default'
-    if icon_key in FREE_ICONS:
-        return icon_key
-    return icon_key if icon_key in get_user_entitlements(username) else 'default'
+    # Entitlement gating is enforced on the client at selection time;
+    # for cross-player display we trust any known key.
+    return icon_key
 
 def grant_achievement(username, ach_key):
     if not username:
@@ -176,7 +177,7 @@ def _write_status():
         pass
 
 HOST          = "0.0.0.0"
-PORT          = 7777
+PORT          = int(os.environ.get("WAR_PORT", 7777))
 CODE_LEN      = 5
 CODE_CHARS    = string.ascii_uppercase + string.digits
 CODE_TTL      = 300
@@ -187,7 +188,7 @@ PING_INTERVAL = 15    # seconds between heartbeat pings sent to each client
 PONG_TIMEOUT  = 10    # seconds to wait for pong before treating connection as dead
 HOST_TTL      = 60    # seconds to hold a lobby after the host drops (reconnect window)
 
-DB_PATH = "/opt/war.db"
+DB_PATH = os.environ.get("WAR_DB", "/opt/war.db")
 
 # database
 
@@ -755,6 +756,7 @@ async def handle_start_game(lobby, role, msg):
     back      = opts.get('back')
     stake     = opts.get('stake', 1)
     challenge = opts.get('challenge', '')
+    sleeve    = opts.get('sleeve', '')
 
     lobby['seed'] = seed
     lobby['is_in_game'] = True
@@ -775,6 +777,7 @@ async def handle_start_game(lobby, role, msg):
         'back':      back,
         'stake':     stake,
         'challenge': challenge,
+        'sleeve':    sleeve,
     })
     log.info(f"lobby {lobby['_code']} startGame seed={seed} lives={lives}")
 
@@ -1125,6 +1128,7 @@ async def handle_game_stats(lobby, role, msg):
     # last still gets the other's; relayed straight over when both are in.
     stats = {
         'jokers':      list(msg.get('jokers') or [])[:12],
+        'joker_names': list(msg.get('joker_names') or [])[:12],
         'consumables': list(msg.get('consumables') or [])[:12],
         'deck':        msg.get('deck'),
     }
@@ -1142,7 +1146,7 @@ async def handle_lobby_options(lobby, role, msg):
         return
     for key in ('lives', 'seed', 'back', 'stake', 'challenge', 'gamemode', 'ruleset',
                 'death_on_round_loss', 'hide_score_until_played', 'pvp_start_ante',
-                'comeback_gold', 'timer_seconds', 'pvp_boss_effects'):
+                'comeback_gold', 'timer_seconds', 'pvp_boss_effects', 'sleeve'):
         if key in msg:
             lobby['options'][key] = msg[key]
     # Relay to guest so they see the config update

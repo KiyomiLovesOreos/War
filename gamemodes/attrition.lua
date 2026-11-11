@@ -1,5 +1,5 @@
 -- gamemodes/attrition.lua  (TODO: rename file to vanilla.lua)
--- Standard PvP mode — vanilla item pool, PvP boss blinds from Ante 2.
+-- Standard PvP mode — vanilla item pool, PvP boss blinds from Ante 3.
 
 WAR.GAMEMODES["vanilla"] = {
     key             = "vanilla",

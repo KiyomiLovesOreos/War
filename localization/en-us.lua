@@ -1,9 +1,6 @@
 -- War mod localisation — English (en-us)
 -- All user-visible strings live here; UI files call localize('war_key').
 -- SMODS merges this into G.localization at load time.
---
--- Blind entries under descriptions.Blind use the FULL key, prefix included
--- (bl_war_jimbo, not war_jimbo) — the game looks descriptions up by G.P_BLINDS key.
 
 return {
     -- SMODS object descriptions
@@ -21,12 +18,7 @@ return {
         -- No individual names — all display as "Your Rival" and are replaced
         -- in-run with the actual rival username.
         Icon = {},
-        Blind = {
-            bl_war_jimbo = {
-                name = "Your Rival",
-                text = { "Beat your Rival's score" },
-            },
-        },
+        Blind = {},
     },
 
     misc = {
@@ -255,7 +247,7 @@ return {
             war_round_paused    = "Paused",
             war_hud_enemy_score = "Enemy Score",
             war_hud_enemy_hands = "Enemy Hands",
-            war_life_lost       = "Life lost",
+            war_life_lost       = "life lost!",
             war_rival_life_lost = "Rival lost a life",
             war_wait_enemy      = "Waiting for opponent...",
 

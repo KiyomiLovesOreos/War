@@ -3,15 +3,6 @@ version = "1.0.0"
 dump_lua = false
 priority = 0
 
-# No-op placeholder required by Lovely (manifest alone causes a parse error)
-[[patches]]
-[patches.pattern]
-target       = "boot.lua"
-pattern      = "return true"
-position     = "before"
-match_indent = true
-payload      = ""
-
 # When War deck-selecting, replace the Continue tab with Challenges.
 # The first G.STAGE==MAIN_MENU branch is the Continue tab; wrapping it means
 # when WAR._deck_selecting the expression short-circuits to the `or {Challenges}` branch.
@@ -92,4 +83,34 @@ match_indent = true
 payload      = '''elseif config.name == 'war_comeback' then
                     table.insert(left_text, {n=G.UIT.T, config={text=config.disp or config.dollars, scale=0.8*scale, colour=G.C.PURPLE, shadow=true, juice=true}})
                     table.insert(left_text, {n=G.UIT.O, config={object=DynaText({string={" "..(WAR and localize("war_comeback_bonus") or "Comeback Bonus")}, colours={G.C.UI.TEXT_LIGHT}, shadow=true, pop_in=0, scale=0.4*scale, silent=true})}})'''
+times        = 1
+
+# Pre-initialise the War profile ("W") with all_unlocked=true before game.lua
+# calls load_profile for the first time.  This mirrors the Cryptid approach:
+# the profile table exists and is flagged before any load, so if vanilla's
+# load_profile ever honours all_unlocked the manual sweep becomes a no-op.
+# The manual _unlock_sweep in enter_war_profile stays as the safety net.
+[[patches]]
+[patches.pattern]
+target       = "game.lua"
+pattern      = 'self:load_profile(G.SETTINGS.profile or 1)'
+position     = "before"
+match_indent = true
+payload      = '''if G.PROFILES then G.PROFILES["W"] = G.PROFILES["W"] or { all_unlocked = true } end
+-- If the game exited mid-match (crash/force-quit), G.SETTINGS.profile may
+-- still be "W".  Reset it to profile 1 so create_tabs doesn't crash when
+-- profile_select finds no chosen tab (G.focused_profile == "W" != 1/2/3).
+if G.SETTINGS and G.SETTINGS.profile == "W" then G.SETTINGS.profile = 1 end'''
+times        = 1
+
+# The pause menu prints the run seed in seeded runs. A War match is always
+# seeded (the relay dictates it), so showing it hands the opponent a fully
+# deterministic replay — hide the row for the length of the match.
+[[patches]]
+[patches.pattern]
+target       = "functions/UI_definitions.lua"
+pattern      = "G.GAME.seeded and current_seed or nil,"
+position     = "at"
+match_indent = true
+payload      = "(G.GAME.seeded and not (WAR and WAR.GAME and WAR.GAME.active)) and current_seed or nil,"
 times        = 1

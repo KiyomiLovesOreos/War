@@ -94,9 +94,7 @@ end
 
 function G.FUNCS.war_do_create(e)
     G.FUNCS.exit_overlay_menu()
-    print("[WAR] war_do_create: calling WAR.LOBBY.create()")
     local ok, err = WAR.LOBBY.create()
-    print("[WAR] war_do_create: ok=" .. tostring(ok) .. " err=" .. tostring(err))
     if not ok then
         WAR.UI.open(create_UIBox_generic_options({
             back_func = "war_private",

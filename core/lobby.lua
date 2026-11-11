@@ -46,15 +46,20 @@ function WAR.LOBBY.push_config()
         lives                   = cfg.lives or 4,
         death_on_round_loss     = cfg.death_on_round_loss ~= false,
         hide_score_until_played = cfg.hide_score_until_played == true,
+        comeback_gold           = cfg.comeback_gold ~= false,
         pvp_start_ante          = cfg.pvp_start_ante or 3,
         gamemode                = cfg.gamemode or "vanilla",
         ruleset                 = cfg.ruleset or "standard",
         timer_seconds           = cfg.timer_seconds or 0,
         pvp_boss_effects        = cfg.pvp_boss_effects ~= false,
+        back                    = cfg.back or "Red Deck",
+        stake                   = cfg.stake or 1,
+        sleeve                  = cfg.sleeve or "",
     })
 end
 
 function WAR.LOBBY.leave()
+    if WAR.UI and WAR.UI.exit_war_profile then WAR.UI.exit_war_profile() end
     WAR.NET.send({ action = "leave" })
     WAR.NET.disconnect()
     WAR.LOBBY.code    = nil

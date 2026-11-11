@@ -138,11 +138,41 @@ local function _fmt_score(n)
     return string.format("%d", math.floor(n))
 end
 
-local function _card_node(key, cw, ch)
+local function _card_node(key, cw, ch, fallback_name)
     local center = G.P_CENTERS and G.P_CENTERS[key]
-    if not center then return nil end
+    if not center then
+        -- Center not found (mod not loaded on this client).
+        -- Show the vanilla locked-card placeholder so it still looks like a
+        -- card slot rather than a bare text label (mismatched mod list case).
+        local lock_center = G.P_CENTERS and G.P_CENTERS["locked"]
+        if lock_center then
+            local ok2, lcard = pcall(Card, 0, 0, cw, ch, nil, lock_center)
+            if ok2 and lcard then
+                lcard.states.drag.can    = false
+                lcard.states.collide.can = false
+                lcard.states.hover.can   = false
+                lcard.T.r = 0
+                return { n=G.UIT.O, config={ object=lcard, minh=ch, minw=cw } }
+            end
+        end
+        -- Locked center also unavailable: last-resort text.
+        local label = fallback_name or key
+        return { n=G.UIT.T, config={ text=label, scale=0.22, colour=G.C.UI.TEXT_INACTIVE } }
+    end
+    -- Force the center to appear unlocked/discovered before construction.
+    -- After exit_war_profile(), _relock_sweep sets modded centers back to
+    -- unlocked=false. Card objects reference the center directly, so we must
+    -- leave it unlocked — the end screen is temporary and the game resets
+    -- profile state on menu transition anyway.
+    center.unlocked  = true
+    center.discovered = true
     local ok, card = pcall(Card, 0, 0, cw, ch, nil, center)
-    if not ok or not card then return nil end
+    if not ok or not card then
+        -- Center found but Card construction failed (e.g. modded atlas issue):
+        -- fall back to the display name so the joker still appears as text.
+        local label = fallback_name or center.name or key
+        return { n=G.UIT.T, config={ text=label, scale=0.22, colour=G.C.UI.TEXT_INACTIVE } }
+    end
     card.states.drag.can    = false
     card.states.collide.can = false
     card.states.hover.can   = false
@@ -150,11 +180,12 @@ local function _card_node(key, cw, ch)
     return { n=G.UIT.O, config={ object=card, minh=ch, minw=cw } }
 end
 
-local function _card_row(keys, cw, ch)
+local function _card_row(keys, cw, ch, names)
     if not keys or #keys == 0 then return nil end
     local nodes = {}
-    for _, key in ipairs(keys) do
-        local node = _card_node(key, cw, ch)
+    for i, key in ipairs(keys) do
+        local name = names and names[i]
+        local node = _card_node(key, cw, ch, name)
         if node then nodes[#nodes+1] = { n=G.UIT.C, config={ padding=0.04 }, nodes={ node } } end
     end
     if #nodes == 0 then return nil end
@@ -195,7 +226,7 @@ local function _board_panel(name, ante, lives, score, is_record, board)
     end
 
     if board then
-        local joker_row = _card_row(board.jokers, cw, ch)
+        local joker_row = _card_row(board.jokers, cw, ch, board.joker_names)
         rows[#rows+1] = joker_row or { n=G.UIT.R, config={ align="cm", padding=0.04 }, nodes={
             { n=G.UIT.T, config={ text=localize('war_end_board_empty'), scale=0.28, colour=G.C.UI.TEXT_INACTIVE }},
         }}
@@ -246,7 +277,7 @@ local function _end_game_screen(won)
         lives  = r.my_lives ~= nil and r.my_lives or WAR.GAME.my_lives
         score  = r.score
         is_rec = r.new_record
-        board  = WAR.GAME.my_board and WAR.GAME.my_board()
+        board  = WAR.GAME._my_board_snapshot or (WAR.GAME.my_board and WAR.GAME.my_board())
     end
 
     return create_UIBox_generic_options({
@@ -331,9 +362,10 @@ function G.FUNCS.war_end_toggle_view(e)
 end
 
 function G.FUNCS.war_end_to_menu(e)
-    WAR.GAME.active          = false
-    WAR.GAME._end_screen     = nil
-    WAR.GAME._stats_refreshed = nil
+    WAR.GAME.active             = false
+    WAR.GAME._end_screen        = nil
+    WAR.GAME._stats_refreshed   = nil
+    WAR.GAME._my_board_snapshot = nil
     G.FUNCS.exit_overlay_menu()
     G.FUNCS.go_to_menu()
 end
