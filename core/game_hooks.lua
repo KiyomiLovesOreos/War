@@ -795,7 +795,7 @@ WAR.calculate = function(self, context)
 
         if context.joker_type_destroyed then
             -- GaryGPT unlock condition
-           if not WAR.GAME.garygpt_claimed and context.card.config.cetner_key == 'j_splash' then
+           if not WAR.GAME.garygpt_claimed and context.card.config.center_key == 'j_splash' then
                 WAR.GAME.garygpt_claimed = true
                 check_for_unlock({type = 'war_garygpt'})
            end
@@ -803,7 +803,7 @@ WAR.calculate = function(self, context)
 
         if context.selling_card then
             -- Egg unlock condition
-            if not WAR.GAME.egg_claimed and context.card.config.cetner_key == 'j_egg' and context.card.sell_cost >= 15 then
+            if not WAR.GAME.egg_claimed and context.card.config.center_key == 'j_egg' and context.card.sell_cost >= 15 then
                 WAR.GAME.egg_claimed = true
                 check_for_unlock({type = 'war_egg'})
             end
