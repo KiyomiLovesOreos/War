@@ -239,7 +239,7 @@ function WAR.GAME.send_hand_state(score, hands)
     if not WAR.GAME.cola_claimed and G.GAME and G.GAME.tags
        and #G.GAME.tags >= 5 then
         WAR.GAME.cola_claimed = true
-        WAR.NET.claim_achievement('cola')
+        check_for_unlock({type = 'war_cola'})
     end
     -- Riff-raff: invalidate the moment any non-Common joker is detected.
     if WAR.GAME.riff_raff_valid and G.jokers and G.jokers.cards then
@@ -254,7 +254,7 @@ function WAR.GAME.send_hand_state(score, hands)
     -- Oops: send claim as soon as threshold is crossed, once per game.
     if WAR.GAME.prob_hits >= 25 and not WAR.GAME.oops_claimed then
         WAR.GAME.oops_claimed = true
-        WAR.NET.claim_achievement("oops")
+        check_for_unlock({type = 'war_oops'})
     end
     local out_score = score or WAR.GAME.my_chips()
     local out_hands = hands or WAR.GAME.hands_left()
@@ -749,35 +749,6 @@ save_run = function(...)
     return _orig_save_run(...)
 end
 
--- Track The Soul (one-off claim) and The Sun (cumulative).
-local _orig_use_consumable = Card.use_consumable
-function Card:use_consumable(area, copier)
-    if WAR.GAME.active and self.config and self.config.center then
-        local key = self.config.center.key
-        if key == 'c_the_soul' and not WAR.GAME.ach_flags.the_soul then
-            WAR.GAME.ach_flags.the_soul = true
-            WAR.NET.claim_achievement('the_soul')
-        end
-        if key == 'c_sun' then
-            WAR.GAME.count('oneshot')
-        end
-    end
-    return _orig_use_consumable(self, area, copier)
-end
-
--- Card.sell_card hook: claim egg when a joker worth $15 or more is sold.
-local _orig_sell_card = Card.sell_card
-function Card:sell_card(...)
-    if WAR.GAME.active and not WAR.GAME.ach_flags.egg
-       and self.config and self.config.center
-       and self.config.center.set == 'Joker'
-       and (self.sell_cost or 0) >= 15 then
-        WAR.GAME.ach_flags.egg = true
-        WAR.NET.claim_achievement('egg')
-    end
-    return _orig_sell_card(self, ...)
-end
-
 -- Sends cumulative per-game counts to the relay at game end (win or lose).
 -- One line per key in WAR.ACH_COUNTERS; the relay owns the targets.
 function WAR.GAME.send_end_increments()
@@ -803,20 +774,6 @@ function WAR.GAME.send_end_increments()
     if dk then WAR.NET.increment_achievement(dk, 1) end
 end
 
--- Garygpt: claim when the Splash Joker (j_splash) is destroyed (dissolved).
-local _orig_start_dissolve = Card.start_dissolve
-if _orig_start_dissolve then
-    function Card:start_dissolve(...)
-        if WAR.GAME.active and not WAR.GAME.garygpt_claimed
-           and self.config and self.config.center
-           and self.config.center.key == 'j_splash' then
-            WAR.GAME.garygpt_claimed = true
-            WAR.NET.claim_achievement('garygpt')
-        end
-        return _orig_start_dissolve(self, ...)
-    end
-end
-
 -- Purple seal creates a tarot when discarded; count per highlighted card.
 local _orig_discard_hand = G.FUNCS.discard_hand
 if _orig_discard_hand then
@@ -829,6 +786,36 @@ if _orig_discard_hand then
             end
         end
         return _orig_discard_hand(e)
+    end
+end
+
+-- General WAR Mod Calculate - Typically used for achievement unlocks
+WAR.calculate = function(self, context)
+    if WAR.GAME.active then
+
+        if context.joker_type_destroyed then
+            -- GaryGPT unlock condition
+           if not WAR.GAME.garygpt_claimed and context.card.config.cetner_key == 'j_splash' then
+                WAR.GAME.garygpt_claimed = true
+                check_for_unlock({type = 'war_garygpt'})
+           end
+        end
+
+        if context.selling_card then
+            -- Egg unlock condition
+            if not WAR.GAME.egg_claimed and context.card.config.cetner_key == 'j_egg' and context.card.sell_cost >= 15 then
+                WAR.GAME.egg_claimed = true
+                check_for_unlock({type = 'war_egg'})
+            end
+        end
+
+        if context.using_consumeable then
+            -- OneShot unlock condition (cumulative)
+            if context.consumeable.config.center_key == 'c_sun' then
+                WAR.GAME.count('oneshot')
+            end
+        end
+        
     end
 end
 

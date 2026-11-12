@@ -1,0 +1,50 @@
+[manifest]
+version = "1.0.0"
+dump_lua = false
+priority = 0
+
+# Allow icon unlocks to use vanilla check_for_unlock
+[[patches]]
+[patches.pattern]
+target       = "functions/common_events.lua"
+pattern      = '''
+--|--------------------------------------------
+--|Achievements
+--|--------------------------------------------
+'''
+position     = "before"
+match_indent = true
+payload      = """
+
+    for _, v in pairs(WAR.AVATAR.by_kind("achievement")) do
+        if (not WAR.AVATAR.is_entitled(v.key)) and (v.achieve and type(v.achieve) == 'function') and v:achieve(args) then
+            WAR.NET.claim_achievement(v.key)
+            notify_alert(v.key, 'war_icon')
+        end
+    end
+
+"""
+
+# Create achievement notifications with War icons when necessary
+[[patches]]
+[patches.pattern]
+target       = '''=[SMODS _ "src/overrides.lua"]'''
+pattern      = '''SMODS.get_atlas("icons")'''
+position     = "after"
+match_indent = true
+payload      = """
+if _type == 'war_icon' then
+    _c = WAR.AVATAR.icon(_achievement)
+    _c.pos = { x = 0, y = _c.row }
+end
+"""
+
+[[patches]]
+[patches.pattern]
+target       = '''=[SMODS _ "src/overrides.lua"]'''
+pattern      = '''_type == 'Back' and localize('k_deck') or'''
+position     = "after"
+match_indent = true
+payload      = """
+_type == 'war_icon' and localize('war_icon') or
+"""

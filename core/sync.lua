@@ -215,18 +215,6 @@ function WAR.SYNC.tick()
         -- game over
         elseif a == "winGame" then
             WAR.GAME.score_result = m
-            if WAR.GAME.jolly_valid then
-                WAR.NET.claim_achievement("jolly")
-            end
-            if WAR.GAME.droll_valid then
-                WAR.NET.claim_achievement("droll")
-            end
-            if WAR.GAME.riff_raff_valid then
-                WAR.NET.claim_achievement("riff_raff")
-            end
-            if WAR.GAME.missing_joker_valid then
-                WAR.NET.claim_achievement("missing_joker")
-            end
             WAR.GAME.send_end_increments()
             WAR.SYNC.on_game_over(true)
 
