@@ -19,7 +19,6 @@ payload      = """
     for _, v in pairs(WAR.AVATAR.by_kind("achievement")) do
         if (not WAR.AVATAR.is_entitled(v.key)) and (v.achieve and type(v.achieve) == 'function') and v:achieve(args) then
             WAR.NET.claim_achievement(v.key)
-            notify_alert(v.key, 'war_icon')
         end
     end
 

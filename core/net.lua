@@ -56,6 +56,7 @@ end
 function WAR.NET.claim_achievement(key)
     if not key then return end
     WAR.NET.send({ action = "claimAchievement", key = key })
+    notify_alert(key, 'war_icon')
 end
 
 function WAR.NET.increment_achievement(key, count)
