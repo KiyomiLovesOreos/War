@@ -51,7 +51,7 @@ WAR.ICONS = {
     { key = "sob",             atlas = "war_icons_free",         row = 36 },
     { key = "tasque_manager",  atlas = "war_icons_free",         row = 37 },
     { key = "jolly",           atlas = "war_icons_achievement",  row = 0,  achieve = function(self, args) if args.type == 'win' then return WAR.GAME.jolly_valid end end },
-    { key = "oops",            atlas = "war_icons_achievement",  row = 1,  achieve = function(self, args) if args.type == 'war_oops' then return WAR.GAME.oops_claimed end end },
+    { key = "oops",            atlas = "war_icons_achievement",  row = 1,  achieve = function(self, args) if args.type == 'war_oops' then return true end end },
     { key = "droll",           atlas = "war_icons_achievement",  row = 2,  achieve = function(self, args) if args.type == 'win' then return WAR.GAME.droll_valid end end },
     { key = "meta",            atlas = "war_icons_achievement",  row = 3,  achieve = "meta" },
     { key = "brilliant",       atlas = "war_icons_achievement",  row = 4,  achieve = "brilliant" },
