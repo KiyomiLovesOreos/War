@@ -367,6 +367,10 @@ function G.FUNCS.war_end_to_menu(e)
     WAR.GAME._stats_refreshed   = nil
     WAR.GAME._my_board_snapshot = nil
     G.FUNCS.exit_overlay_menu()
+    -- Clean up the relay connection so the socket and lobby code don't linger
+    -- on the main menu. Without this the auto-reconnect fires with the old code
+    -- and reports "lobby not found" when the connection eventually drops.
+    WAR.LOBBY.leave()
     G.FUNCS.go_to_menu()
 end
 

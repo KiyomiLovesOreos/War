@@ -174,6 +174,44 @@ WAR.GAME = {
     round_ended      = false,  -- duplicate end_round guard, cleared by new_round
 }
 
+-- ease_lives({ my = N, enemy = N }) — set either/both sides' lives and sync.
+-- Plays the right sounds when lives drop. Pass no_sync=true from relay message
+-- handlers to avoid the setLives → playerInfo → ease_lives → setLives loop.
+function WAR.GAME.ease_lives(opts, no_sync)
+    opts = opts or {}
+    if opts.my ~= nil then
+        local before = WAR.GAME.my_lives
+        WAR.GAME.my_lives = tonumber(opts.my) or WAR.GAME.my_lives
+        if before and WAR.GAME.my_lives < before then
+            if WAR.UI and WAR.UI.tell then
+                WAR.UI.tell(localize('war_life_lost'))
+            end
+            play_sound("cancel", 0.9,   0.7)
+            play_sound("holo1",  0.865, 0.6)
+        end
+    end
+    if opts.enemy ~= nil then
+        local before = WAR.GAME.enemy_lives
+        WAR.GAME.enemy_lives = tonumber(opts.enemy) or WAR.GAME.enemy_lives
+        if before and WAR.GAME.enemy_lives < before then
+            if WAR.UI and WAR.UI.tell then
+                WAR.UI.tell(localize('war_rival_life_lost'), G.C.BLUE)
+            end
+            play_sound("holo1",  0.865, 0.9)
+            play_sound("cancel", 0.9,   0.7)
+        end
+    end
+    if WAR.UI and WAR.UI.refresh_hud then
+        WAR.UI.refresh_hud()
+    end
+    if not no_sync and WAR.GAME.active and WAR.NET and WAR.NET.connected() then
+        local msg = { action = "setLives" }
+        if opts.my    ~= nil then msg.my_lives    = WAR.GAME.my_lives    end
+        if opts.enemy ~= nil then msg.enemy_lives = WAR.GAME.enemy_lives end
+        WAR.NET.send(msg)
+    end
+end
+
 -- Cumulative achievements the client counts during a run. game_hooks bumps
 -- WAR.GAME.count(key) at the point the thing happens; the relay owns the
 -- target, so a new "score N of X" achievement is one entry here plus a call

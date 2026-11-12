@@ -47,6 +47,9 @@ WAR.ICONS = {
     { key = "ride_the_bus",    atlas = "war_icons_free",         row = 32 },
     { key = "pareidolia",      atlas = "war_icons_free",         row = 33 },
     { key = "brutalists_heart",atlas = "war_icons_free",         row = 34 },
+    { key = "chud",            atlas = "war_icons_free",         row = 35 },
+    { key = "sob",             atlas = "war_icons_free",         row = 36 },
+    { key = "tasque_manager",  atlas = "war_icons_free",         row = 37 },
     { key = "jolly",           atlas = "war_icons_achievement",  row = 0,  achieve = "jolly" },
     { key = "oops",            atlas = "war_icons_achievement",  row = 1,  achieve = "oops" },
     { key = "droll",           atlas = "war_icons_achievement",  row = 2,  achieve = "droll" },
@@ -90,6 +93,10 @@ WAR.ICONS = {
     { key = "blue_seal",       atlas = "war_icons_achievement",  row = 40, achieve = "blue_seal" },
     { key = "gold_seal",       atlas = "war_icons_achievement",  row = 41, achieve = "gold_seal" },
     { key = "purple_seal",     atlas = "war_icons_achievement",  row = 42, achieve = "purple_seal" },
+    { key = "eyes",            atlas = "war_icons_achievement",  row = 43, achieve = "eyes" },
+    { key = "hack",            atlas = "war_icons_achievement",  row = 44, achieve = "hack" },
+    { key = "hit_the_road",    atlas = "war_icons_achievement",  row = 45, achieve = "hit_the_road" },
+    { key = "supernova",       atlas = "war_icons_achievement",  row = 46, achieve = "supernova" },
     { key = "bean",            atlas = "war_icons_special",      row = 0,  special = true },
     { key = "zaino",           atlas = "war_icons_special",      row = 1,  special = true },
     { key = "doc",             atlas = "war_icons_special",      row = 2,  special = true },
@@ -103,6 +110,8 @@ WAR.ICONS = {
     { key = "revo",            atlas = "war_icons_special",      row = 10, special = true },
     { key = "argel",           atlas = "war_icons_special",      row = 11, special = true },
     { key = "baggute",         atlas = "war_icons_special",      row = 12, special = true },
+    { key = "amolyte",         atlas = "war_icons_special",      row = 13, special = true },
+    { key = "gabby",           atlas = "war_icons_special",      row = 14, special = true },
 }
 
 WAR.AVATAR.selected = "jimbo"

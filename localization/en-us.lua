@@ -138,6 +138,11 @@ return {
             war_icon_ride_the_bus    = "Ride the Bus",
             war_icon_pareidolia      = "Pareidolia",
             war_icon_brutalists_heart = "Brutalists Heart",
+            war_icon_chud             = "Chud",
+            war_icon_sob              = "Sob",
+            war_icon_tasque_manager   = "Tasque Manager",
+            war_icon_hack             = "Hack",
+            war_icon_hit_the_road     = "Hit the Road",
 
             war_icon_jolly           = "Win a game playing only hands that contain a pair",
             war_icon_oops            = "Have 25 probability rolls land in one game",
@@ -182,6 +187,8 @@ return {
             war_icon_blue_seal       = "Trigger the Blue Seal 100 times",
             war_icon_gold_seal       = "Trigger the Gold Seal 100 times",
             war_icon_purple_seal     = "Trigger the Purple Seal 100 times",
+            war_icon_eyes            = "Eyes",
+            war_icon_supernova       = "Supernova",
 
             war_icon_bean            = "Bean",
             war_icon_zaino           = "Zaino",
@@ -196,6 +203,8 @@ return {
             war_icon_revo            = "Revo",
             war_icon_argel           = "Argel",
             war_icon_baggute         = "Baggute",
+            war_icon_amolyte         = "Amolyte",
+            war_icon_gabby           = "Gabby",
 
             -- Ruleset bans
             war_bans_title        = "What this ruleset bans",
@@ -225,7 +234,7 @@ return {
             war_panel_deck        = "Deck",
             war_panel_stake       = "Stake",
             war_panel_seed        = "Seed",
-            war_panel_seed_random = "Random",
+            war_panel_seed_random = "Random Seed",
             war_panel_lives_label = "lives",
             war_panel_timer_off   = "Timer: Off",
             war_panel_timer_label = "Timer",
@@ -246,7 +255,7 @@ return {
             war_round_timer     = "Timer",
             war_round_paused    = "Paused",
             war_hud_enemy_score = "Enemy Score",
-            war_hud_enemy_hands = "Enemy Hands",
+            war_hud_enemy_hands = "Enemy Hands ",
             war_life_lost       = "life lost!",
             war_rival_life_lost = "Rival lost a life",
             war_wait_enemy      = "Waiting for opponent...",

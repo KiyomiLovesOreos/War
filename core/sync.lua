@@ -19,6 +19,13 @@ function WAR.NET.on_relay_disconnected()
         WAR.GAME.active = false
         WAR.UI.show_message(localize('war_relay_lost'))
         WAR.UI.hide_waiting()
+    elseif WAR.GAME._end_screen ~= nil then
+        -- Game already finished: drop cleanly, don't attempt to rejoin the
+        -- old lobby (it's closed on the relay side once someone leaves).
+        WAR.LOBBY.code    = nil
+        WAR.LOBBY.is_host = false
+        WAR.LOBBY_STATE   = "none"
+        if WAR.UI.update_connection_status then WAR.UI.update_connection_status() end
     elseif WAR.LOBBY.code then
         local code     = WAR.LOBBY.code
         local is_host  = WAR.LOBBY.is_host
@@ -185,13 +192,7 @@ function WAR.SYNC.tick()
             WAR.SYNC.on_enemy_info(m)
 
         elseif a == "playerInfo" then
-            local before = WAR.GAME.my_lives
-            WAR.GAME.my_lives = tonumber(m.lives) or WAR.GAME.my_lives
-            if before and WAR.GAME.my_lives < before then
-                if WAR.UI.tell then WAR.UI.tell(localize('war_life_lost')) end
-                play_sound("cancel", 0.9,   0.7)
-                play_sound("holo1",  0.865, 0.6)
-            end
+            WAR.GAME.ease_lives({ my = tonumber(m.lives) }, true)
             WAR.UI.refresh_hud()
 
         elseif a == "enemyStats" then
@@ -418,13 +419,7 @@ function WAR.SYNC.on_enemy_info(m)
         WAR.GAME.enemy_skips = skips
     end
     if m.lives ~= nil then
-        local before = WAR.GAME.enemy_lives
-        WAR.GAME.enemy_lives = tonumber(m.lives) or WAR.GAME.enemy_lives
-        if before and WAR.GAME.enemy_lives < before and WAR.UI.tell then
-            WAR.UI.tell(localize('war_rival_life_lost'), G.C.BLUE)
-            play_sound("holo1",  0.865, 0.9)
-            play_sound("cancel", 0.9,   0.7)
-        end
+        WAR.GAME.ease_lives({ enemy = tonumber(m.lives) }, true)
     end
     -- DO NOT update G.GAME.blind.chips here — it is held at 999M during PvP
     -- so vanilla never auto-wins. Display is driven by WAR.UI._hud.enemy_score.

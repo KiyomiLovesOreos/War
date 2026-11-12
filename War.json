@@ -5,7 +5,7 @@
   "author": ["Amolyte"],
   "description": "My own remaking of balatro MP but like, not slop",
   "prefix": "war",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main_file": "War.lua",
   "badge_colour": "8B0000",
   "icon_path": "mod_badge.png",

@@ -27,11 +27,13 @@ FREE_ICONS = {
     'azure', 'flowery', 'pig', 'persona',
     'raised_fist', 'popcorn', 'gift_card', 'stamp', 'superposition',
     'fibonacci', 'scholar', 'ride_the_bus', 'pareidolia', 'brutalists_heart',
+    'chud', 'sob', 'tasque_manager',
 }
 
 SPECIAL_ICONS = {
     'bean', 'zaino', 'doc', 'murphy', 'thunderedge', 'soulware',
     'sheila', 'astra', 'lizie', 'inky', 'revo', 'argel', 'baggute',
+    'amolyte', 'gabby',
 }
 
 def _ach(threshold=None, stat=None, reserved=False):
@@ -92,6 +94,10 @@ ACHIEVEMENTS = {
     'blue_seal':     _ach(threshold=100),
     'gold_seal':     _ach(threshold=100),
     'purple_seal':   _ach(threshold=100),
+    'eyes':          _ach(reserved=True),
+    'hack':          _ach(reserved=True),
+    'hit_the_road':  _ach(reserved=True),
+    'supernova':     _ach(reserved=True),
 }
 
 # Stake keys that must all be earned to auto-grant jimbo_stake.
@@ -338,23 +344,16 @@ def parse_score(s):
 
 def cleanup_stale():
     t = now()
-    dead = [c for c, l in lobbies.items() if (
-        # Empty lobbies past TTL (host present and connected, no guest)
-        (t - l['created'] > CODE_TTL and not l['guest']
-            and l['host'] and l['host'] not in clients
-            and not l.get('_host_reconnect_deadline')) or
-        # Guest reconnect window expired
-        (l.get('_reconnect_deadline') and t > l['_reconnect_deadline']) or
-        # Host reconnect window expired
-        (l.get('_host_reconnect_deadline') and t > l['_host_reconnect_deadline']) or
-        # Both slots empty with no pending reconnect window
-        (not l['host'] and not l['guest']
-            and not l.get('_reconnect_deadline')
-            and not l.get('_host_reconnect_deadline')) or
-        # Host socket gone without a reconnect window (orphan guard)
-        (l['host'] is not None and l['host'] not in clients
-            and not l.get('_host_reconnect_deadline'))
-    )]
+    dead = []
+    for code, lobby in lobbies.items():
+        host_w  = lobby.get('host')
+        guest_w = lobby.get('guest')
+        host_live  = host_w  is not None and host_w  in clients
+        guest_live = guest_w is not None and guest_w in clients
+        # Keep lobbies while at least one live player is connected;
+        # expire once both slots are empty/dead and old enough.
+        if not host_live and not guest_live and t - lobby['created'] > CODE_TTL:
+            dead.append(code)
     for c in dead:
         del lobbies[c]
 
@@ -649,8 +648,13 @@ async def handle_join(writer, msg):
         await send(writer, {'action': 'error', 'reason': 'no_lobby'})
         return
     if lobby['guest']:
-        await send(writer, {'action': 'error', 'reason': 'full'})
-        return
+        if lobby['guest'] in clients:
+            await send(writer, {'action': 'error', 'reason': 'full'})
+            return
+        # stale slot — reconnected before heartbeat cleaned it up
+        lobby['guest']             = None
+        lobby['host_lobby_ready']  = False
+        lobby['guest_lobby_ready'] = False
     info = clients.get(writer, {})
 
     if not info.get('username'):
@@ -697,6 +701,10 @@ async def handle_join(writer, msg):
 # game state helpers
 
 async def lose_life(lobby, role, cause='round'):
+    # already at zero — a timer death and round-resolution can both fire
+    # and use separate blockers, so without this lives can go negative
+    if lobby.get(f'{role}_lives', 1) <= 0:
+        return
     blocker_key = f'{role}_round_lives_blocker' if cause == 'round' else f'{role}_timer_lives_blocker'
     if lobby.get(blocker_key):
         return
@@ -1181,8 +1189,36 @@ async def dispatch(writer, msg):
     elif action == 'join':          await handle_join(writer, msg)
     elif action == 'rejoin_host':   await handle_rejoin_host(writer, msg)
     elif action == 'leave':
-        clients[writer]['leaving'] = True
-        await disconnect(writer)
+        info = clients.get(writer)
+        if not info:
+            return
+        code  = info.get('code')
+        lobby = lobbies.get(code) if code else None
+        if lobby:
+            role    = info.get('role')
+            in_game = lobby.get('is_in_game', False)
+            await broadcast(lobby, {'action': 'peer_left'}, exclude=writer)
+            if in_game:
+                await broadcast(lobby, {'action': 'stopGame'}, exclude=writer)
+                del lobbies[code]
+                log.info(f"lobby {code} closed (role={role} in_game, left)")
+            else:
+                if role == 'guest':
+                    if lobby.get('guest') is writer:
+                        lobby['guest'] = None
+                else:
+                    lobby['host'] = None
+                lobby['host_lobby_ready']  = False
+                lobby['guest_lobby_ready'] = False
+                remaining = (lobby.get('host') is not None) or (lobby.get('guest') is not None)
+                if not remaining:
+                    del lobbies[code]
+                    log.info(f"lobby {code} closed (empty after {role} left)")
+                else:
+                    log.info(f"lobby {code} {role} left, lobby held")
+        # keep connection alive — reused by next join/create without re-authing
+        info.pop('code', None)
+        info.pop('role', None)
     elif action in ('ready', 'unready'):
         info  = clients.get(writer)
         if not info: return
@@ -1205,7 +1241,8 @@ async def dispatch(writer, msg):
         msg['_from'] = info['role']
         await broadcast(lobby, msg, exclude=writer)
     elif action in ('startGame', 'readyBlind', 'unreadyBlind', 'playHand',
-                    'failRound', 'setAnte', 'setLocation', 'newRound', 'gameStats'):
+                    'failRound', 'setAnte', 'setLocation', 'newRound', 'gameStats',
+                    'setLives'):
         info  = clients.get(writer)
         if not info: return
         lobby = lobbies.get(info.get('code'))
@@ -1222,6 +1259,40 @@ async def dispatch(writer, msg):
         elif action == 'setLocation':  await handle_set_location(lobby, role, msg)
         elif action == 'newRound':     await handle_new_round(lobby, role, msg)
         elif action == 'gameStats':    await handle_game_stats(lobby, role, msg)
+        elif action == 'setLives':     await handle_set_lives(lobby, role, msg)
+
+async def handle_set_lives(lobby, role, msg):
+    enemy_role = get_enemy_role(role)
+    if msg.get('my_lives') is not None:
+        lobby[f'{role}_lives'] = max(0, int(msg['my_lives']))
+        lives = lobby[f'{role}_lives']
+        w  = lobby.get(role)
+        ew = lobby.get(enemy_role)
+        if w:
+            await send(w, {'action': 'playerInfo', 'lives': lives})
+        if ew:
+            await send(ew, {
+                'action':    'enemyInfo',
+                'handsLeft': lobby.get(f'{role}_hands_left', 0),
+                'score':     str(lobby.get(f'{role}_score', 0)),
+                'skips':     lobby.get(f'{role}_skips', 0),
+                'lives':     lives,
+            })
+    if msg.get('enemy_lives') is not None:
+        lobby[f'{enemy_role}_lives'] = max(0, int(msg['enemy_lives']))
+        lives = lobby[f'{enemy_role}_lives']
+        w  = lobby.get(enemy_role)
+        ew = lobby.get(role)
+        if w:
+            await send(w, {'action': 'playerInfo', 'lives': lives})
+        if ew:
+            await send(ew, {
+                'action':    'enemyInfo',
+                'handsLeft': lobby.get(f'{enemy_role}_hands_left', 0),
+                'score':     str(lobby.get(f'{enemy_role}_score', 0)),
+                'skips':     lobby.get(f'{enemy_role}_skips', 0),
+                'lives':     lives,
+            })
 
 # connection lifecycle
 
@@ -1247,13 +1318,22 @@ async def handle_rejoin_host(writer, msg):
     lobby = lobbies.get(code)
     info  = clients.get(writer, {})
 
-    if not lobby or lobby.get('host') is not None:
+    if not lobby:
         await send(writer, {'action': 'error', 'reason': 'no_lobby'})
         return
-    # Identity check: the reconnecting client must be the original host user.
+    # identity check — only the original host may reclaim the slot
     if not info.get('user_id') or info['user_id'] != lobby.get('host_user_id'):
         await send(writer, {'action': 'error', 'reason': 'no_lobby'})
         return
+    # evict any stale writer still in the slot (heartbeat-race)
+    old = lobby.get('host')
+    if old is not None:
+        clients.pop(old, None)
+        try:
+            old.close()
+        except Exception:
+            pass
+        lobby['host'] = None
 
     lobby['host'] = writer
     lobby['_host_reconnect_deadline'] = None
@@ -1341,32 +1421,29 @@ async def disconnect(writer):
     if not lobby:
         return
 
-    intentional = info.get('leaving', False)
-    in_game     = lobby.get('is_in_game', False)
-    role        = info.get('role')
+    role    = info.get('role')
+    in_game = lobby.get('is_in_game', False)
 
     await broadcast(lobby, {'action': 'peer_left'}, exclude=writer)
     if in_game:
         await broadcast(lobby, {'action': 'stopGame'}, exclude=writer)
-
-    if intentional or in_game:
         del lobbies[code]
-        log.info(f"lobby {code} closed (role={role} intentional={intentional})")
-    elif role == 'guest':
-        # Guest dropped: keep lobby so they can rejoin within 120 s
+        log.info(f"lobby {code} closed (role={role} in_game)")
+        return
+
+    if role == 'guest':
         if lobby.get('guest') is writer:
             lobby['guest'] = None
-        lobby['host_lobby_ready']  = False
-        lobby['guest_lobby_ready'] = False
-        lobby['_reconnect_deadline'] = now() + 120
-        log.info(f"lobby {code} guest dropped, held for reconnect")
     else:
-        # Host dropped unintentionally: keep lobby so host can rejoin within HOST_TTL
         lobby['host'] = None
-        lobby['host_lobby_ready']  = False
-        lobby['guest_lobby_ready'] = False
-        lobby['_host_reconnect_deadline'] = now() + HOST_TTL
-        log.info(f"lobby {code} host dropped, held {HOST_TTL}s for reconnect")
+    lobby['host_lobby_ready']  = False
+    lobby['guest_lobby_ready'] = False
+
+    if not lobby.get('host') and not lobby.get('guest'):
+        del lobbies[code]
+        log.info(f"lobby {code} closed (empty after {role} left)")
+    else:
+        log.info(f"lobby {code} {role} left, lobby held")
 
 # entry
 

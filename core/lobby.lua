@@ -61,12 +61,24 @@ end
 function WAR.LOBBY.leave()
     if WAR.UI and WAR.UI.exit_war_profile then WAR.UI.exit_war_profile() end
     WAR.NET.send({ action = "leave" })
-    WAR.NET.disconnect()
+    -- keep socket open — reused by the next join/create without re-authing
     WAR.LOBBY.code    = nil
     WAR.LOBBY.is_host = false
     WAR.LOBBY_STATE   = "none"
     WAR.GAME.active   = false
     WAR.MODIFIERS     = {}
+    WAR.LOBBY.config.lives                   = 4
+    WAR.LOBBY.config.timer_seconds           = 90
+    WAR.LOBBY.config.pvp_start_ante          = 3
+    WAR.LOBBY.config.seed                    = nil
+    WAR.LOBBY.config.death_on_round_loss     = true
+    WAR.LOBBY.config.hide_score_until_played = false
+    WAR.LOBBY.config.comeback_gold           = true
+    WAR.LOBBY.config.pvp_boss_effects        = true
+    if WAR.AVATAR then
+        WAR.AVATAR._enemy_host  = "jimbo"
+        WAR.AVATAR._enemy_guest = "jimbo"
+    end
 end
 
 print("[WAR] lobby loaded")

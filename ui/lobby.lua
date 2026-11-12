@@ -176,9 +176,14 @@ function WAR.UI.on_joined_as_guest(host_username, code)
 end
 
 function WAR.UI.on_peer_left()
+    if WAR.GAME._end_screen ~= nil then return end
     WAR.LOBBY.guest_name  = nil
     WAR.LOBBY.ready       = false
     WAR.LOBBY.peer_ready  = false
+    if WAR.AVATAR then
+        local peer_role = WAR.LOBBY.is_host and "guest" or "host"
+        WAR.AVATAR["_enemy_" .. peer_role] = "jimbo"
+    end
     WAR.UI.update_lobby_status()
     WAR.UI.show_lobby(G.UIDEF.war_lobby_bar())
 end
@@ -546,7 +551,7 @@ function G.UIDEF.war_players_popup()
 end
 
 function G.FUNCS.war_lobby_players(e)
-    WAR.UI.open_popup(G.UIDEF.war_players_popup())
+    WAR.UI.open_instant(G.UIDEF.war_players_popup())
 end
 
 -- WAR._deck_selecting:    set while the setup_run overlay is open for War deck selection.
