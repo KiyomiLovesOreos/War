@@ -257,11 +257,8 @@ function WAR.SYNC.on_start_game(m)
     WAR.GAME.jolly_valid  = true
     WAR.GAME.droll_valid  = true
     WAR.GAME.prob_hits    = 0
-    WAR.GAME.oops_claimed = false
     WAR.GAME.riff_raff_valid   = true
     WAR.GAME.missing_joker_valid = true
-    WAR.GAME.cola_claimed        = false
-    WAR.GAME.garygpt_claimed     = false
     WAR.GAME.match_stake         = nil
     WAR.GAME.match_deck          = nil
     WAR.GAME._hand_state_sent    = true  -- stays true until first SELECTING_HAND

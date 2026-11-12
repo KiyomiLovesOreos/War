@@ -236,9 +236,7 @@ function WAR.GAME.send_hand_state(score, hands)
         end
     end
     -- Cola: claim as soon as 5 or more tags exist at once.
-    if not WAR.GAME.cola_claimed and G.GAME and G.GAME.tags
-       and #G.GAME.tags >= 5 then
-        WAR.GAME.cola_claimed = true
+    if G.GAME and G.GAME.tags and #G.GAME.tags >= 5 then
         check_for_unlock({type = 'war_cola'})
     end
     -- Riff-raff: invalidate the moment any non-Common joker is detected.
@@ -252,8 +250,7 @@ function WAR.GAME.send_hand_state(score, hands)
         end
     end
     -- Oops: send claim as soon as threshold is crossed, once per game.
-    if WAR.GAME.prob_hits >= 25 and not WAR.GAME.oops_claimed then
-        WAR.GAME.oops_claimed = true
+    if WAR.GAME.prob_hits >= 25 then
         check_for_unlock({type = 'war_oops'})
     end
     local out_score = score or WAR.GAME.my_chips()
@@ -795,16 +792,14 @@ WAR.calculate = function(self, context)
 
         if context.joker_type_destroyed then
             -- GaryGPT unlock condition
-           if not WAR.GAME.garygpt_claimed and context.card.config.center_key == 'j_splash' then
-                WAR.GAME.garygpt_claimed = true
+           if context.card.config.center_key == 'j_splash' then
                 check_for_unlock({type = 'war_garygpt'})
            end
         end
 
         if context.selling_card then
             -- Egg unlock condition
-            if not WAR.GAME.egg_claimed and context.card.config.center_key == 'j_egg' and context.card.sell_cost >= 15 then
-                WAR.GAME.egg_claimed = true
+            if context.card.config.center_key == 'j_egg' and context.card.sell_cost >= 15 then
                 check_for_unlock({type = 'war_egg'})
             end
         end
