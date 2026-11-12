@@ -25,32 +25,8 @@ function WAR.UI.open(definition, offset_y)
     G.OVERLAY_MENU:align_to_major()
 end
 
--- WAR.UI.open_popup: same slide for smaller overlay popups.
+-- WAR.UI.open_popup: bottom-up slide for smaller overlay popups.
 function WAR.UI.open_popup(definition)
-    if G.OVERLAY_MENU then G.OVERLAY_MENU:remove() end
-    G.SETTINGS.paused = true
-    G.CONTROLLER.locks.frame_set = true
-    G.CONTROLLER.locks.frame     = true
-    G.CONTROLLER:mod_cursor_context_layer(1)
-    G.OVERLAY_MENU = UIBox{
-        definition = definition,
-        config = {
-            align  = "cm",
-            offset = { x = 0, y = 10 },
-            major  = G.ROOM_ATTACH,
-            bond   = "Weak",
-        }
-    }
-    G.OVERLAY_MENU.alignment.offset.y = 0
-    G.ROOM.jiggle = G.ROOM.jiggle + 1
-    G.OVERLAY_MENU:align_to_major()
-end
-
--- WAR.UI.open_instant: same chrome as open(), but the box is created at its
--- final offset and its rendered transform is snapped to the target, so there
--- is no slide at all (the players popup used to swoop in diagonally from the
--- screen corner because its VT still sat at the pre-alignment position).
-function WAR.UI.open_instant(definition)
     if G.OVERLAY_MENU then G.OVERLAY_MENU:remove() end
     G.SETTINGS.paused = true
     G.CONTROLLER.locks.frame_set = true
@@ -65,25 +41,42 @@ function WAR.UI.open_instant(definition)
             bond   = "Weak",
         }
     }
-    local box = G.OVERLAY_MENU
-    local function snap()
+    local box   = G.OVERLAY_MENU
+    local SLIDE = 10
+    local function place()
         box:align_to_major()
-        if box.role and box.role.offset then
-            box.T.x  = G.ROOM_ATTACH.T.x + box.role.offset.x
-            box.T.y  = G.ROOM_ATTACH.T.y + box.role.offset.y
-            box.VT.x = box.T.x
-            box.VT.y = box.T.y
-        end
+        box.VT.x = box.T.x
+        box.VT.y = box.T.y + SLIDE
     end
-    snap()
-    -- One more pass next frame in case a child object resized the box.
+    place()
+    -- second pass in case a child object resized the box
     G.E_MANAGER:add_event(Event({
         trigger = "immediate", blockable = false,
         func = function()
-            if G.OVERLAY_MENU == box then snap() end
+            if G.OVERLAY_MENU == box then place() end
             return true
         end,
     }))
+    G.ROOM.jiggle = G.ROOM.jiggle + 1
+end
+
+-- WAR.UI.open_instant: overlay popup, appears immediately with no animation.
+-- bond='Glued' means animated child objects can't cause it to drift or slide.
+function WAR.UI.open_instant(definition)
+    if G.OVERLAY_MENU then G.OVERLAY_MENU:remove() end
+    G.SETTINGS.paused = true
+    G.CONTROLLER.locks.frame_set = true
+    G.CONTROLLER.locks.frame     = true
+    G.CONTROLLER:mod_cursor_context_layer(1)
+    G.OVERLAY_MENU = UIBox{
+        definition = definition,
+        config = {
+            align  = "cm",
+            offset = { x = 0, y = 0 },
+            major  = G.ROOM_ATTACH,
+            bond   = "Glued",
+        }
+    }
     G.ROOM.jiggle = G.ROOM.jiggle + 1
 end
 

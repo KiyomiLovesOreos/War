@@ -44,8 +44,6 @@ WAR.load("core/game_hooks.lua")
 -- Load saved pfp choice once all modules are initialised.
 if WAR.AVATAR then WAR.AVATAR.load_choice() end
 
--- Objects (blinds) must load before gamemodes so bl_war_jimbo exists
--- when attrition gamemode references it
 WAR.load_dir("objects/blinds")
 WAR.load_dir("gamemodes")
 
