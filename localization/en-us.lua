@@ -9,8 +9,7 @@ return {
             War = {
                 name = "War",
                 text = {
-                    "My own remaking of Balatro MP,",
-                    "but like, not slop.",
+                    "The best Balatro PvP",
                 },
             },
         },

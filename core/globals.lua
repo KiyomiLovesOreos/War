@@ -311,6 +311,7 @@ WAR.MODCOMPAT = {
 -- ace card that slots into the A position to complete the WAR ambigram.
 SMODS.Atlas({ key="lobby_title", path="lobby_title.png", px=379, py=253 })
 SMODS.Atlas({ key="lobby_card",  path="lobby_card.png",  px=71,  py=95  })
+SMODS.Atlas({ key="war_titlecard",  path="mod_title_mini.png",  px=115,  py=85  })
 -- Icon picker sheets (21-frame animated, one row per icon)
 SMODS.Atlas({ key="war_icons_free",        path="icons_free.png",        px=34, py=34, atlas_table="ANIMATION_ATLAS", frames=21 })
 SMODS.Atlas({ key="war_icons_achievement", path="icons_achievement.png", px=34, py=34, atlas_table="ANIMATION_ATLAS", frames=21 })

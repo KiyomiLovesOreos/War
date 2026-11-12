@@ -5,6 +5,8 @@
 WAR = SMODS.current_mod
 WAR.ROOT = WAR.path
 
+-- TODO: add code for instant game crash if you're soulware
+
 -- Set to 0 to silence verbose in-game logging (scoring, auth, network events).
 -- Error and warning prints are always shown regardless.
 WAR.console_log = 0
@@ -50,6 +52,7 @@ WAR.load_dir("gamemodes")
 -- UI: explicit order (lobby last; it references symbols from earlier files)
 WAR.load("ui/_init.lua")
 WAR.load("ui/utils.lua")
+WAR.load("ui/home.lua")
 WAR.load("ui/account.lua")
 WAR.load("ui/screens.lua")
 WAR.load("ui/icon_select.lua")
