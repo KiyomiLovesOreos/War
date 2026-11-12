@@ -235,10 +235,6 @@ function WAR.GAME.send_hand_state(score, hands)
             WAR.GAME.missing_joker_valid = false
         end
     end
-    -- Cola: claim as soon as 5 or more tags exist at once.
-    if G.GAME and G.GAME.tags and #G.GAME.tags >= 5 then
-        check_for_unlock({type = 'war_cola'})
-    end
     -- Riff-raff: invalidate the moment any non-Common joker is detected.
     if WAR.GAME.riff_raff_valid and G.jokers and G.jokers.cards then
         for _, jkr in ipairs(G.jokers.cards) do
@@ -808,6 +804,13 @@ WAR.calculate = function(self, context)
             -- OneShot unlock condition (cumulative)
             if context.consumeable.config.center_key == 'c_sun' then
                 WAR.GAME.count('oneshot')
+            end
+        end
+
+        if context.tag_added then
+            -- Cola unlock condition
+            if #G.GAME.tags >= 5 then
+                check_for_unlock({type = 'war_cola'})
             end
         end
         
