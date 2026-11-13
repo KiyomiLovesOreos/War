@@ -23,6 +23,7 @@ return {
     misc = {
         dictionary = {
             -- Main menu / navigation
+            war_discord         = "Join Discord",
             war_single_player   = "Single Player",
             war_online          = "Online",
 
