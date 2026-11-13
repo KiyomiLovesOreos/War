@@ -9,7 +9,7 @@ WAR.AVATAR = {}
 -- key     = stable id used on the wire (never shown to players directly)
 -- atlas   = which war_icons_* atlas the sprite lives in
 -- row     = row index within that atlas
--- achieve = takes a string for cumulative unlocks and a function for single-time unlocks; shows locked placeholder if not entitled
+-- achieve = takes a string for unlocks that rely on `WAR.GAME.count()` and a function for single-time unlocks; shows locked placeholder if not entitled
 -- special = if true, hidden entirely unless the account has been granted this key
 WAR.ICONS = {
     { key = "jimbo",           atlas = "war_icons_free",         row = 0 },
