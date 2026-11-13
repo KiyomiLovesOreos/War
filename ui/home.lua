@@ -21,6 +21,10 @@ WAR.description_loc_vars = function()
     }
 end
 
+function G.FUNCS.war_discord(e)
+    love.system.openURL("https://discord.gg/fTaz9DmA6")
+end
+
 function WAR.custom_ui(nodes)
     nodes[#nodes - 1] = nil;
 
@@ -29,7 +33,7 @@ function WAR.custom_ui(nodes)
         G.ROOM.T.h,
         2 * G.CARD_W,
         G.CARD_H,
-        { card_limit = 1, type = "title_2", highlight_limit = 0, collection = true }
+        { card_limit = 1, type = "title_2", highlight_limit = 0 }
     )
 
     local card =
@@ -41,9 +45,22 @@ function WAR.custom_ui(nodes)
     warcard_area:emplace(card)
     local war_card = {
         n = G.UIT.O,
-        config = {
-            object = warcard_area,
-        },
+        config = { object = warcard_area },
+    }
+
+    local ok, discord_spr = pcall(SMODS.create_sprite, 0, 0, 0.6, 0.67, "war_socials", { x=1, y=0 })
+    local spr_node = (ok and discord_spr)
+        and { n=G.UIT.O, config={ object=discord_spr } }
+        or  { n=G.UIT.B, config={ w=0.6, h=0.67 } }
+
+    local discord_btn = {
+        n = G.UIT.C, config = {
+            align   = "tm",
+            padding = 0.2,
+            hover   = true,
+            button  = "war_discord",
+            tooltip = { title = localize('war_discord') },
+        }, nodes = { spr_node }
     }
 
     local loc_desc = nodes[#nodes]
@@ -58,9 +75,12 @@ function WAR.custom_ui(nodes)
             }, {
                 n = G.UIT.R,
                 config = { minw = 5, padding = 0.2, align = "cm" },
-                nodes = { loc_desc }
+                nodes = {
+                    { n = G.UIT.B, config = { w = 1.0, h = 0.1 } },
+                    { n = G.UIT.C, config = { align = "cm" }, nodes = { loc_desc } },
+                    discord_btn
+                }
             }
         }
     }
-    -- nodes[#nodes+1] = z
 end

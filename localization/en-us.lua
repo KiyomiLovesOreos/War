@@ -129,8 +129,9 @@ return {
     misc = {
         dictionary = {
             -- Main menu / navigation
-            war_single_player         = "Single Player",
-            war_online                = "Online",
+            war_discord         = "Join Discord",
+            war_single_player   = "Single Player",
+            war_online          = "Online",
 
             -- Private lobby screens
             war_join_lobby            = "Join Lobby",
