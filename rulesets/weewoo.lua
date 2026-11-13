@@ -45,7 +45,7 @@ WAR.RULESETS["weeworld"]["activate"] = function()
     -- where the magic happens, shuffles set tables, then top to bottom until hitting maxSet
     for set, objects in pairs(sets) do
         for ix = #objects, 2, -1 do
-            local j = pseudorandom(objects[ix].key, 0, ix)
+            local j = pseudorandom(objects[ix].key, 1, ix)
             objects[ix], objects[j] = objects[j], objects[ix]
         end
 
