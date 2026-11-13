@@ -127,8 +127,9 @@ local function war_rs_list(gm_key)
     local gm = WAR.GAMEMODES[gm_key]
     if not gm then return {} end
     local out = {}
-    for _, k in ipairs(gm.rulesets or {}) do
-        if WAR.RULESETS[k] then out[#out+1] = WAR.RULESETS[k] end
+    local blacklist = gm.rulesetBlacklist or {}
+    for i, k in pairs(WAR.RULESETS or {}) do
+        if not blacklist[k] then out[#out+1] = WAR.RULESETS[i] end
     end
     return out
 end
@@ -191,7 +192,7 @@ function G.UIDEF.war_gamemode_select(sel_key)
             UIBox_button({
                 id="gm_"..gm.key, col=true,
                 chosen=sel_key == gm.key and "vert" or false,
-                label={localize(gm.name)}, button="war_select_gamemode",
+                label={localize("war_gm_".. gm.key.. "_name") or ""}, button="war_select_gamemode",
                 colour=G.C.RED, minw=3.0, scale=0.42, minh=0.65,
             }),
         }}
@@ -202,10 +203,12 @@ function G.UIDEF.war_gamemode_select(sel_key)
     local confirm_label = has_rulesets and localize('war_next') or localize('war_create_lobby')
     local right_nodes = {}
     if sel then
-        local desc = type(sel.description) == "table" and sel.description or {sel.description or ""}
+        local predesc = localize("war_gm_".. sel.key.. "_desc")
+        local desc = type(predesc) == "table" and predesc or {predesc or ""}
         for _, line in ipairs(desc) do
             right_nodes[#right_nodes+1] = { n=G.UIT.R, config={ align="cm", padding=0.04 }, nodes={
-                { n=G.UIT.T, config={ text=localize(line), scale=0.38, colour=G.C.UI.TEXT_LIGHT }},
+                { n=G.UIT.T, config={ text=line, scale=0.38, colour=G.C.UI.TEXT_LIGHT }},
+                -- pretty sure this'll crash if theres a table in the desc bt whatever
             }}
         end
     end
@@ -383,7 +386,7 @@ function G.UIDEF.war_ruleset_select(gm_key, sel_key)
             UIBox_button({
                 id="rs_"..rs.key, col=true,
                 chosen=sel_key == rs.key and "vert" or false,
-                label={localize(rs.name)}, button="war_select_ruleset",
+                label={localize("war_rs_".. rs.key.. "_name") or ""}, button="war_select_ruleset",
                 colour=G.C.RED, minw=3.0, scale=0.42, minh=0.65,
             }),
         }}
@@ -392,10 +395,11 @@ function G.UIDEF.war_ruleset_select(gm_key, sel_key)
     -- Right: description lines + confirm
     local right_nodes = {}
     if sel then
-        local desc = type(sel.description) == "table" and sel.description or {sel.description or ""}
+        local predesc = localize("war_rs_".. sel.key.. "_desc") -- funny how this changes by two characters (gm -> rs)
+        local desc = type(predesc) == "table" and predesc or {predesc or ""}
         for _, line in ipairs(desc) do
             right_nodes[#right_nodes+1] = { n=G.UIT.R, config={ align="cm", padding=0.04 }, nodes={
-                { n=G.UIT.T, config={ text=localize(line), scale=0.38, colour=G.C.UI.TEXT_LIGHT }},
+                { n=G.UIT.T, config={ text=line, scale=0.38, colour=G.C.UI.TEXT_LIGHT }},
             }}
         end
     end

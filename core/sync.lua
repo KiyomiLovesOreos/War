@@ -293,6 +293,15 @@ function WAR.SYNC.on_start_game(m)
     if m.challenge then WAR.LOBBY.config.challenge = m.challenge end
     if m.sleeve    ~= nil then WAR.LOBBY.config.sleeve = (m.sleeve ~= "") and m.sleeve or nil end
 
+    -- activate gm/rs
+    local gm, rs = WAR.LOBBY.config.gamemode, WAR.LOBBY.config.ruleset
+    if WAR.GAMEMODES[gm] and WAR.GAMEMODES[gm]["activate"] then
+        WAR.GAMEMODES[gm]["activate"]()
+    end
+    if WAR.RULESETS[rs] and WAR.RULESETS[rs]["activate"] then
+        WAR.RULESETS[rs]["activate"]()
+    end
+
     if G.OVERLAY_MENU then G.FUNCS.exit_overlay_menu() end
     WAR.UI.hide_lobby()
 

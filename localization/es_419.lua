@@ -39,17 +39,23 @@ return {
             war_rulesets        = "Sets de Reglas",
             war_next            = "Siguiente",
 
+
             -- Gamemode: Vanilla
-            war_gm_vanilla_name   = "Vanilla",
-            war_gm_vanilla_desc_1 = "Balatro PvP Regular.",
-            war_gm_vanilla_desc_2 = "Las ciegas jefe se convierten en",
-            war_gm_vanilla_desc_3 = "rondas PvP empezando de Ante 2.",
-            war_gm_vanilla_desc_4 = "Puntua menos fichas para perder una vida.",
+            war_gm_vanilla_name   = "Regular",
+            war_gm_vanilla_desc   = {
+                "Balatro PvP Regular.",
+                "Las ciegas jefe se convierten en",
+                "rondas PvP empezando de Ante 2.",
+                "Puntua menos fichas para perder una vida.",
+            },
 
             -- Ruleset: Standard
             war_rs_standard_name   = "Regular",
-            war_rs_standard_desc_1 = "Set de reglas predeterminado.",
-            war_rs_standard_desc_2 = "Sin restricciones extra.",
+            war_rs_standard_desc   = {"Set de reglas predeterminado.", "Sin restricciones extra."},
+
+            -- Ruleset: Wee World
+            war_rs_weeworld_name   = "Wee World",
+            war_rs_weeworld_desc   = {"Removes half of all", "Jokers and Consumables."},
 
             -- Lobby bar buttons
             war_ready           = "LISTO",
