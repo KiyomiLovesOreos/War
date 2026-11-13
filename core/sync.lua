@@ -215,20 +215,9 @@ function WAR.SYNC.tick()
         -- game over
         elseif a == "winGame" then
             WAR.GAME.score_result = m
-            if WAR.GAME.jolly_valid then
-                WAR.NET.claim_achievement("jolly")
-            end
-            if WAR.GAME.droll_valid then
-                WAR.NET.claim_achievement("droll")
-            end
-            if WAR.GAME.riff_raff_valid then
-                WAR.NET.claim_achievement("riff_raff")
-            end
-            if WAR.GAME.missing_joker_valid then
-                WAR.NET.claim_achievement("missing_joker")
-            end
             WAR.GAME.send_end_increments()
             WAR.SYNC.on_game_over(true)
+            check_for_unlock({type = 'war_win'})
 
         elseif a == "loseGame" then
             WAR.GAME.score_result = m
@@ -269,11 +258,8 @@ function WAR.SYNC.on_start_game(m)
     WAR.GAME.jolly_valid  = true
     WAR.GAME.droll_valid  = true
     WAR.GAME.prob_hits    = 0
-    WAR.GAME.oops_claimed = false
     WAR.GAME.riff_raff_valid   = true
     WAR.GAME.missing_joker_valid = true
-    WAR.GAME.cola_claimed        = false
-    WAR.GAME.garygpt_claimed     = false
     WAR.GAME.match_stake         = nil
     WAR.GAME.match_deck          = nil
     WAR.GAME._hand_state_sent    = true  -- stays true until first SELECTING_HAND
