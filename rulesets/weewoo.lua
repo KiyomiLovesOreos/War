@@ -44,6 +44,8 @@ WAR.RULESETS["weeworld"]["activate"] = function()
     end
     -- where the magic happens, shuffles set tables, then top to bottom until hitting maxSet
     for set, objects in pairs(sets) do
+        table.sort(objects, function(a, b) return a.key < b.key end)
+
         for ix = #objects, 2, -1 do
             local j = pseudorandom(objects[ix].key, 1, ix)
             objects[ix], objects[j] = objects[j], objects[ix]
@@ -65,9 +67,5 @@ WAR.RULESETS["weeworld"]["activate"] = function()
             end
         end
     end
-    print(G.GAME.banned_keys)
-end
-
-WAR.RULESETS["weeworld"]["deactivate"] = function()
-    G.GAME.banned_keys = {} -- could b moved to be built in 
+    print(tprint(G.GAME.banned_keys))
 end

@@ -111,6 +111,15 @@ function Game:start_run(start_params)
     end
     _orig_start_run(self, start_params)
     if WAR.GAME.active then
+        -- run gm and rs activation functions
+        local gm, rs = WAR.LOBBY.config.gamemode, WAR.LOBBY.config.ruleset
+        if WAR.GAMEMODES[gm] and WAR.GAMEMODES[gm]["activate"] then
+            WAR.GAMEMODES[gm]["activate"]()
+        end
+        if WAR.RULESETS[rs] and WAR.RULESETS[rs]["activate"] then
+            WAR.RULESETS[rs]["activate"]()
+        end
+
         -- Record stake and deck for end-of-match achievement increments.
         WAR.GAME.match_stake = G.GAME and G.GAME.stake
         WAR.GAME.match_deck  = G.GAME and G.GAME.back and G.GAME.back.name
