@@ -217,6 +217,7 @@ function WAR.SYNC.tick()
             WAR.GAME.score_result = m
             WAR.GAME.send_end_increments()
             WAR.SYNC.on_game_over(true)
+            check_for_unlock({type = 'war_win'})
 
         elseif a == "loseGame" then
             WAR.GAME.score_result = m

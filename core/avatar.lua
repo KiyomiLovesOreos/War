@@ -9,7 +9,7 @@ WAR.AVATAR = {}
 -- key     = stable id used on the wire (never shown to players directly)
 -- atlas   = which war_icons_* atlas the sprite lives in
 -- row     = row index within that atlas
--- achieve = achievement key required; shows locked placeholder if not entitled
+-- achieve = takes a string for cumulative unlocks and a function for single-time unlocks; shows locked placeholder if not entitled
 -- special = if true, hidden entirely unless the account has been granted this key
 WAR.ICONS = {
     { key = "jimbo",           atlas = "war_icons_free",         row = 0 },
@@ -50,9 +50,9 @@ WAR.ICONS = {
     { key = "chud",            atlas = "war_icons_free",         row = 35 },
     { key = "sob",             atlas = "war_icons_free",         row = 36 },
     { key = "tasque_manager",  atlas = "war_icons_free",         row = 37 },
-    { key = "jolly",           atlas = "war_icons_achievement",  row = 0,  achieve = function(self, args) if args.type == 'win' then return WAR.GAME.jolly_valid end end },
+    { key = "jolly",           atlas = "war_icons_achievement",  row = 0,  achieve = function(self, args) if args.type == 'war_win' then return WAR.GAME.jolly_valid end end },
     { key = "oops",            atlas = "war_icons_achievement",  row = 1,  achieve = function(self, args) if args.type == 'war_oops' then return true end end },
-    { key = "droll",           atlas = "war_icons_achievement",  row = 2,  achieve = function(self, args) if args.type == 'win' then return WAR.GAME.droll_valid end end },
+    { key = "droll",           atlas = "war_icons_achievement",  row = 2,  achieve = function(self, args) if args.type == 'war_win' then return WAR.GAME.droll_valid end end },
     { key = "meta",            atlas = "war_icons_achievement",  row = 3,  achieve = "meta" },
     { key = "brilliant",       atlas = "war_icons_achievement",  row = 4,  achieve = "brilliant" },
     { key = "blunder",         atlas = "war_icons_achievement",  row = 5,  achieve = "blunder" },
@@ -61,9 +61,9 @@ WAR.ICONS = {
     { key = "egg",             atlas = "war_icons_achievement",  row = 8,  achieve = function(self, args) if args.type == 'war_egg' then return true end end },
     { key = "bloodstone",      atlas = "war_icons_achievement",  row = 9,  achieve = "bloodstone" },
     { key = "pizza",           atlas = "war_icons_achievement",  row = 10, achieve = "pizza" },
-    { key = "riff_raff",       atlas = "war_icons_achievement",  row = 11, achieve = function(self, args) if args.type == 'win' then return WAR.GAME.riff_raff_valid end end },
+    { key = "riff_raff",       atlas = "war_icons_achievement",  row = 11, achieve = function(self, args) if args.type == 'war_win' then return WAR.GAME.riff_raff_valid end end },
     { key = "garygpt",         atlas = "war_icons_achievement",  row = 12, achieve = function(self, args) if args.type == 'war_garygpt' then return true end end },
-    { key = "missing_joker",   atlas = "war_icons_achievement",  row = 13, achieve = function(self, args) if args.type == 'win' then return WAR.GAME.missing_joker_valid end end },
+    { key = "missing_joker",   atlas = "war_icons_achievement",  row = 13, achieve = function(self, args) if args.type == 'war_win' then return WAR.GAME.missing_joker_valid end end },
     { key = "cola",            atlas = "war_icons_achievement",  row = 14, achieve = function(self, args) if args.type == 'war_cola' then return true end end },
     { key = "osage",           atlas = "war_icons_achievement",  row = 15, achieve = "osage" },
     { key = "stone",           atlas = "war_icons_achievement",  row = 16, achieve = "stone" },
