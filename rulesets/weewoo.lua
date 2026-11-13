@@ -9,6 +9,7 @@ WAR.RULESETS["weeworld"] = {
         Default = true,
         Edition = true,
         Enhanced = true,
+        Back = true
     }
 
     -- wowie ME, BITTERDOES did something here!!
@@ -26,13 +27,14 @@ local maxSets = {
 }
 
 WAR.RULESETS["weeworld"]["activate"] = function()
+
     G.GAME.banned_keys = {}
 
     local sets = {}
     local t2Vouchers = {}
 
     for _, object in pairs(G.P_CENTERS) do -- differentiate sets    
-        if not object.set or WAR.RULESETS["weeworld"].ignoredSets[object.set] then goto continue end
+        if not object.set or not object.key or WAR.RULESETS["weeworld"].ignoredSets[object.set] then goto continue end
         if object.requires then table.insert(t2Vouchers, object) goto continue end
 
         sets[object.set] = sets[object.set] or {}
@@ -40,7 +42,6 @@ WAR.RULESETS["weeworld"]["activate"] = function()
 
         ::continue::
     end
-
     -- where the magic happens, shuffles set tables, then top to bottom until hitting maxSet
     for set, objects in pairs(sets) do
         for ix = #objects, 2, -1 do
@@ -48,7 +49,8 @@ WAR.RULESETS["weeworld"]["activate"] = function()
             objects[ix], objects[j] = objects[j], objects[ix]
         end
 
-        for i = #set, maxSets[set] or #objects*1/4, -1 do -- 1/4 meaning leaves 1 4th
+        for i = #objects, maxSets[set] or #objects*1/4, -1 do -- 1/4 meaning leaves 1 4th
+            print(objects[i])
             G.GAME.banned_keys[objects[i].key] = true
         end
     end
@@ -63,6 +65,7 @@ WAR.RULESETS["weeworld"]["activate"] = function()
             end
         end
     end
+    print(G.GAME.banned_keys)
 end
 
 WAR.RULESETS["weeworld"]["deactivate"] = function()
