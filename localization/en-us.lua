@@ -146,16 +146,21 @@ return {
             war_next                  = "Next",
 
             -- Gamemode: Vanilla
-            war_gm_vanilla_name       = "Vanilla",
-            war_gm_vanilla_desc_1     = "Standard PvP Balatro.",
-            war_gm_vanilla_desc_2     = "Boss blinds become PvP rounds",
-            war_gm_vanilla_desc_3     = "starting from Ante 2.",
-            war_gm_vanilla_desc_4     = "Score fewer chips to lose a life.",
+            war_gm_vanilla_name   = "Vanilla",
+            war_gm_vanilla_desc   = {
+                "Standard PvP Balatro.",
+                "Boss blinds become PvP rounds",
+                "starting from Ante 2.",
+                "Score fewer chips to lose a life.",
+            },
 
             -- Ruleset: Standard
-            war_rs_standard_name      = "Standard",
-            war_rs_standard_desc_1    = "Default ruleset.",
-            war_rs_standard_desc_2    = "No extra restrictions.",
+            war_rs_standard_name   = "Standard",
+            war_rs_standard_desc   = {"Default ruleset.", "No extra restrictions."},
+
+            -- Ruleset: Mini World
+            war_rs_weeworld_name   = "Wee World",
+            war_rs_weeworld_desc   = {"Removes majority of all", "Jokers, Consumables, Booster Packs and Vouchers."},
 
             -- Lobby bar buttons
             war_ready                 = "READY",

@@ -46,6 +46,7 @@ if WAR.AVATAR then WAR.AVATAR.load_choice() end
 
 WAR.load_dir("objects/blinds")
 WAR.load_dir("gamemodes")
+WAR.load_dir("rulesets")
 
 -- UI: explicit order (lobby last; it references symbols from earlier files)
 WAR.load("ui/_init.lua")
