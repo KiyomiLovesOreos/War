@@ -34,7 +34,12 @@ WAR.RULESETS["weeworld"]["activate"] = function()
     local t2Vouchers = {}
 
     for _, object in pairs(G.P_CENTERS) do -- differentiate sets    
-        if not object.set or not object.key or WAR.RULESETS["weeworld"].ignoredSets[object.set] then goto continue end
+        if
+            not object.set or not object.key or
+            WAR.RULESETS["weeworld"].ignoredSets[object.set] --or
+            -- here we'll check if host has mod this items from
+        then goto continue end
+
         if object.requires then table.insert(t2Vouchers, object) goto continue end
 
         sets[object.set] = sets[object.set] or {}
@@ -67,5 +72,4 @@ WAR.RULESETS["weeworld"]["activate"] = function()
             end
         end
     end
-    print(tprint(G.GAME.banned_keys))
 end
