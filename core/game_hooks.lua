@@ -2,26 +2,7 @@
 
 local _auto_login_done = false
 
--- Count pseudorandom "hits" during PvP hand scoring for the Oops achievement.
--- Only fires while in HAND_PLAYED state (the scoring phase) during a PvP round.
 WAR.GAME.prob_hits = 0
-local _orig_pseudo = pseudorandom
-function pseudorandom(key, mn, mx)
-    local r = _orig_pseudo(key, mn, mx)
-    if G.STATE == G.STATES.HAND_PLAYED
-       and WAR.GAME.active and WAR.GAME.pvp_round()
-       and WAR.NET.connected() and r < 0.5 then
-        WAR.GAME.prob_hits = WAR.GAME.prob_hits + 1
-    end
-    -- Lucky card: count actual triggers via their known pseudorandom keys.
-    -- Both checks fire on the minimum value: pseudorandom(key,1,5)==1 is a hit.
-    if WAR.GAME.active and WAR.NET.connected()
-       and (key == 'lucky_mult' or key == 'lucky_money')
-       and mn ~= nil and r == mn then
-        WAR.GAME.count('lucky')
-    end
-    return r
-end
 
 -- The pause menu row is hidden by a Lovely patch; this stops the copy button
 -- (or any mod that calls it) from putting the seed on the clipboard.
@@ -205,37 +186,6 @@ function WAR.GAME.send_hand_state(score, hands)
         else
             WAR.GAME.droll_valid = false
         end
-        -- Per-card counters for the cumulative achievements, one bump per card.
-        for _, card in ipairs(G.play.cards) do
-            if card.base and card.base.suit == 'Hearts' then
-                WAR.GAME.count('bloodstone')
-            end
-            if card.seal == 'Red' then
-                WAR.GAME.count('pizza')
-                WAR.GAME.count('red_seal')
-            end
-            if card.seal == 'Blue' then WAR.GAME.count('blue_seal') end
-            if card.config and card.config.center then
-                local ck = card.config.center.key
-                if ck == 'm_stone' then
-                    -- Stone feeds both: osage counts to 1000, stone to 100.
-                    WAR.GAME.count('osage')
-                    WAR.GAME.count('stone')
-                end
-                if ck == 'm_wild'  then WAR.GAME.count('wild')  end
-                if ck == 'm_mult'  then WAR.GAME.count('mult')  end
-                if ck == 'm_gold'  then WAR.GAME.count('gold')  end
-            end
-        end
-        -- Steel: triggers while held in hand during scoring.
-        if G.hand and G.hand.cards then
-            for _, card in ipairs(G.hand.cards) do
-                if card.config and card.config.center
-                   and card.config.center.key == 'm_steel' then
-                    WAR.GAME.count('steel')
-                end
-            end
-        end
     end
     -- Missing joker: invalidate if joker slots are full at any hand.
     if WAR.GAME.missing_joker_valid and G.jokers then
@@ -243,12 +193,6 @@ function WAR.GAME.send_hand_state(score, hands)
         if #G.jokers.cards >= lim then
             WAR.GAME.missing_joker_valid = false
         end
-    end
-    -- Cola: claim as soon as 5 or more tags exist at once.
-    if not WAR.GAME.cola_claimed and G.GAME and G.GAME.tags
-       and #G.GAME.tags >= 5 then
-        WAR.GAME.cola_claimed = true
-        WAR.NET.claim_achievement('cola')
     end
     -- Riff-raff: invalidate the moment any non-Common joker is detected.
     if WAR.GAME.riff_raff_valid and G.jokers and G.jokers.cards then
@@ -259,11 +203,6 @@ function WAR.GAME.send_hand_state(score, hands)
                 break
             end
         end
-    end
-    -- Oops: send claim as soon as threshold is crossed, once per game.
-    if WAR.GAME.prob_hits >= 25 and not WAR.GAME.oops_claimed then
-        WAR.GAME.oops_claimed = true
-        WAR.NET.claim_achievement("oops")
     end
     local out_score = score or WAR.GAME.my_chips()
     local out_hands = hands or WAR.GAME.hands_left()
@@ -727,13 +666,6 @@ if _orig_go_shop then
     G.FUNCS.to_shop = function(e)
         if WAR.GAME.active then
             WAR.NET.send({ action = "setLocation", location = "Shop" })
-            -- Gold seal gives $3 per held card at round end; count them here
-            -- (once per round, before G.hand is cleared for the next blind).
-            if G.hand and G.hand.cards then
-                for _, card in ipairs(G.hand.cards) do
-                    if card.seal == 'Gold' then WAR.GAME.count('gold_seal') end
-                end
-            end
         end
         return _orig_go_shop(e)
     end
@@ -756,35 +688,6 @@ local _orig_save_run = save_run
 save_run = function(...)
     if G and G.F_NO_SAVING then return end
     return _orig_save_run(...)
-end
-
--- Track The Soul (one-off claim) and The Sun (cumulative).
-local _orig_use_consumable = Card.use_consumable
-function Card:use_consumable(area, copier)
-    if WAR.GAME.active and self.config and self.config.center then
-        local key = self.config.center.key
-        if key == 'c_the_soul' and not WAR.GAME.ach_flags.the_soul then
-            WAR.GAME.ach_flags.the_soul = true
-            WAR.NET.claim_achievement('the_soul')
-        end
-        if key == 'c_sun' then
-            WAR.GAME.count('oneshot')
-        end
-    end
-    return _orig_use_consumable(self, area, copier)
-end
-
--- Card.sell_card hook: claim egg when a joker worth $15 or more is sold.
-local _orig_sell_card = Card.sell_card
-function Card:sell_card(...)
-    if WAR.GAME.active and not WAR.GAME.ach_flags.egg
-       and self.config and self.config.center
-       and self.config.center.set == 'Joker'
-       and (self.sell_cost or 0) >= 15 then
-        WAR.GAME.ach_flags.egg = true
-        WAR.NET.claim_achievement('egg')
-    end
-    return _orig_sell_card(self, ...)
 end
 
 -- Sends cumulative per-game counts to the relay at game end (win or lose).
@@ -812,32 +715,96 @@ function WAR.GAME.send_end_increments()
     if dk then WAR.NET.increment_achievement(dk, 1) end
 end
 
--- Garygpt: claim when the Splash Joker (j_splash) is destroyed (dissolved).
-local _orig_start_dissolve = Card.start_dissolve
-if _orig_start_dissolve then
-    function Card:start_dissolve(...)
-        if WAR.GAME.active and not WAR.GAME.garygpt_claimed
-           and self.config and self.config.center
-           and self.config.center.key == 'j_splash' then
-            WAR.GAME.garygpt_claimed = true
-            WAR.NET.claim_achievement('garygpt')
-        end
-        return _orig_start_dissolve(self, ...)
-    end
-end
+-- General WAR Mod Calculate - Typically used for achievement unlocks
+WAR.calculate = function(self, context)
+    if WAR.GAME.active then
 
--- Purple seal creates a tarot when discarded; count per highlighted card.
-local _orig_discard_hand = G.FUNCS.discard_hand
-if _orig_discard_hand then
-    G.FUNCS.discard_hand = function(e)
-        if WAR.GAME.active and G.hand and G.hand.cards then
-            for _, card in ipairs(G.hand.cards) do
-                if card.highlighted and card.seal == 'Purple' then
-                    WAR.GAME.count('purple_seal')
+        if context.joker_type_destroyed then
+            -- GaryGPT unlock condition
+           if context.card.config.center_key == 'j_splash' then
+                check_for_unlock({type = 'war_garygpt'})
+           end
+        end
+
+        if context.selling_card then
+            -- Egg unlock condition
+            if context.card.config.center_key == 'j_egg' and context.card.sell_cost >= 15 then
+                check_for_unlock({type = 'war_egg'})
+            end
+        end
+
+        if context.using_consumeable then
+            -- OneShot unlock condition (cumulative)
+            if context.consumeable.config.center_key == 'c_sun' then
+                WAR.GAME.count('oneshot')
+            end
+        end
+
+        if context.tag_added then
+            -- Cola unlock condition
+            if #G.GAME.tags >= 5 then
+                check_for_unlock({type = 'war_cola'})
+            end
+        end
+        
+        if context.pseudorandom_result then
+            -- Oops unlock condition
+            -- Count pseudorandom "hits" during PvP hand scoring for the Oops achievement.
+            -- Only fires while in HAND_PLAYED state (the scoring phase) during a PvP round.
+            if context.result and G.STATE == G.STATES.HAND_PLAYED and WAR.GAME.pvp_round() then
+                WAR.GAME.prob_hits = WAR.GAME.prob_hits + 1
+                if WAR.GAME.prob_hits >= 25 then
+                    check_for_unlock({type = 'war_oops'})
                 end
             end
         end
-        return _orig_discard_hand(e)
+
+        if context.individual and context.cardarea == G.play then
+            -- Lucky unlock condition
+            if context.other_card.lucky_trigger and not context.other_card.repetition_trigger then
+                WAR.GAME.count('lucky')
+            end
+
+            -- Bloodstone unlock condition
+            if context.other_card.base and context.other_card.base.suit == 'Hearts' and not SMODS.has_no_suit(context.other_card) then
+                WAR.GAME.count('bloodstone')
+            end
+
+            -- Wild unlock condition
+            if SMODS.has_enhancement(context.other_card, 'm_wild') then
+                WAR.GAME.count('wild')
+            end
+
+            -- Mult unlock condition
+            if SMODS.has_enhancement(context.other_card, 'm_mult') then
+                WAR.GAME.count('mult')
+            end
+
+            -- Stone & Osage unlock condition
+            -- Stone feeds both: osage counts to 1000, stone to 100.
+            if SMODS.has_enhancement(context.other_card, 'm_stone') then
+                WAR.GAME.count('stone')
+                WAR.GAME.count('osage')
+            end
+
+            if context.other_card.seal == 'Gold' then
+                WAR.GAME.count('gold_seal')
+            end
+        end
+
+        if context.individual and context.cardarea == G.hand then
+            if context.end_of_round then
+                -- Gold unlock condition
+                if SMODS.has_enhancement(context.other_card, 'm_gold') then
+                    WAR.GAME.count('gold')
+                end
+            else
+                -- Steel unlock condition
+                if SMODS.has_enhancement(context.other_card, 'm_steel') then
+                    WAR.GAME.count('steel')
+                end
+            end
+        end
     end
 end
 

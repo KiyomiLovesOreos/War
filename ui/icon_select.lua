@@ -27,7 +27,7 @@ local function icon_cell(icon, selected)
             align   = "cm", r=0.08, padding=0.06,
             colour  = { 0, 0, 0, 0 },
             hover   = true,
-            tooltip = { title = localize("war_icon_" .. icon.key) or icon.key },
+            tooltip = { title = localize{ key = "war_icon_" .. icon.key, set = 'WAR_Icon', type = 'raw_descriptions' }[1] or icon.key },
         }, nodes={ inner }}
     end
 
@@ -43,6 +43,7 @@ local function icon_cell(icon, selected)
         emboss    = selected and 0.08 or nil,
         hover     = true,
         button    = "war_select_icon",
+        tooltip = { title = localize{ key = "war_icon_" .. icon.key, set = 'WAR_Icon', type = 'name_text' } or icon.key },
         ref_table = { icon_key = icon.key },
         ref_value = "icon_key",
     }, nodes={ inner }}

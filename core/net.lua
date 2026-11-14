@@ -55,6 +55,9 @@ end
 -- so the wire shape lives in one place per direction.
 function WAR.NET.claim_achievement(key)
     if not key then return end
+    if not WAR.AVATAR.is_entitled(key) then
+        notify_alert(key, 'war_icon')
+    end
     WAR.NET.send({ action = "claimAchievement", key = key })
 end
 
